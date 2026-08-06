@@ -42,6 +42,7 @@ namespace CustomNavigation.Editor
 
             EditorUtility.SetDirty(hub);
             EditorSceneManager.MarkSceneDirty(scene);
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             EnsureBuildSettings();
             AssetDatabase.SaveAssets();

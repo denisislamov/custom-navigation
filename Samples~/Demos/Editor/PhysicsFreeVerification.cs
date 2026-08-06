@@ -57,8 +57,8 @@ namespace CustomNavigation.Editor
         private static void VerifyServerClientIsThin()
         {
             string clientPath = Path.Combine(
-                Application.dataPath,
-                "CustomNavigation/Scripts/ServerNavigationTopDownDemo.cs");
+                ResolveClientRoot(),
+                "ServerNavigationTopDownDemo.cs");
             string source = File.ReadAllText(clientPath);
             string[] forbiddenClientApis =
             {
@@ -85,18 +85,54 @@ namespace CustomNavigation.Editor
             Verify();
         }
 
+        /// <summary>
+        /// Locates the folder with the client demo sources relative to this script, so the
+        /// check works both in the source repository (Assets/CustomNavigation/Client) and
+        /// after importing the package sample (Assets/Samples/Custom Navigation/...).
+        /// </summary>
+        private static string ResolveClientRoot()
+        {
+            string[] guids = AssetDatabase.FindAssets("PhysicsFreeVerification t:MonoScript");
+            foreach (string guid in guids)
+            {
+                string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                if (assetPath.EndsWith("PhysicsFreeVerification.cs", StringComparison.Ordinal))
+                {
+                    // .../<ClientRoot>/Editor/PhysicsFreeVerification.cs -> <ClientRoot>
+                    string editorFolder = Path.GetDirectoryName(Path.GetFullPath(assetPath));
+                    return Path.GetDirectoryName(editorFolder)
+                        ?? throw new InvalidOperationException(
+                            "Cannot resolve the client root above the Editor folder.");
+                }
+            }
+
+            throw new InvalidOperationException(
+                "Cannot locate PhysicsFreeVerification.cs through the AssetDatabase.");
+        }
+
         private static void VerifyProjectSources()
         {
             string projectRoot = Directory.GetParent(Application.dataPath)?.FullName
                 ?? throw new InvalidOperationException("Cannot resolve the Unity project root.");
-            string[] sourceRoots =
+
+            // Package sources are resolved through Unity's virtual Packages/ path, so the
+            // check keeps working whether the package is embedded, local or from a git URL.
+            string packageRoot = Path.GetFullPath("Packages/com.datasakura.custom-navigation");
+            var sourceRoots = new List<string>
             {
-                Path.Combine(Application.dataPath, "CustomNavigation/Scripts"),
-                Path.Combine(Application.dataPath, "CustomNavigation/Authoring"),
-                Path.Combine(Application.dataPath, "CustomNavigation/Runtime"),
-                Path.Combine(Application.dataPath, "CustomNavigation/Editor/NavigationAuthoring"),
-                Path.Combine(projectRoot, "DotRecastServer")
+                ResolveClientRoot(),
+                Path.Combine(packageRoot, "Authoring"),
+                Path.Combine(packageRoot, "Runtime"),
+                Path.Combine(packageRoot, "Editor")
             };
+
+            // The standalone navigation server only exists in the source repository;
+            // consumer projects install just the Unity package.
+            string serverRoot = Path.Combine(projectRoot, "DotRecastServer");
+            if (Directory.Exists(serverRoot))
+            {
+                sourceRoots.Add(serverRoot);
+            }
 
             foreach (string sourceRoot in sourceRoots)
             {
@@ -111,6 +147,12 @@ namespace CustomNavigation.Editor
                              "*.cs",
                              SearchOption.AllDirectories))
                 {
+                    // This file legitimately spells out the forbidden tokens in its own lists.
+                    if (Path.GetFileName(sourcePath) == "PhysicsFreeVerification.cs")
+                    {
+                        continue;
+                    }
+
                     string source = File.ReadAllText(sourcePath);
                     foreach (string forbiddenCall in ForbiddenRuntimeCalls)
                     {

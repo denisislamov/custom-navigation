@@ -51,6 +51,7 @@ namespace CustomNavigation.Editor
                 new Vector3(11f, 0f, 7f));
 
             EditorSceneManager.MarkSceneDirty(scene);
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
             Selection.activeObject = runtimeObject;

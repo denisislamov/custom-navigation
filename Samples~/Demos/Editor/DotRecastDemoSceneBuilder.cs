@@ -85,6 +85,7 @@ namespace CustomNavigation.Editor
             EditorUtility.SetDirty(scheduler);
             EditorUtility.SetDirty(demo);
             EditorSceneManager.MarkSceneDirty(scene);
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
             AssetDatabase.SaveAssets();
@@ -118,6 +119,7 @@ namespace CustomNavigation.Editor
 
             EditorUtility.SetDirty(demo);
             EditorSceneManager.MarkSceneDirty(scene);
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ServerClientScenePath));
             EditorSceneManager.SaveScene(scene, ServerClientScenePath);
             AddSceneToBuildSettings(ServerClientScenePath);
             AssetDatabase.SaveAssets();

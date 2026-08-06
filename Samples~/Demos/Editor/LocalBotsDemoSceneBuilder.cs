@@ -108,6 +108,7 @@ namespace CustomNavigation.Editor
                 runtimeObject.AddComponent<NavigationQuerySchedulerBehaviour>();
             LocalOnlyBotsNavigationDemo demo = runtimeObject.AddComponent<LocalOnlyBotsNavigationDemo>();
 
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildAndExport(level);
             scheduler.Configure(artifact.Asset, performance, agent);

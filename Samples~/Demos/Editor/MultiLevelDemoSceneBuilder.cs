@@ -159,6 +159,7 @@ namespace CustomNavigation.Editor
                 runtimeObject.AddComponent<NavigationQuerySchedulerBehaviour>();
             MultiLevelNavigationDemo demo = runtimeObject.AddComponent<MultiLevelNavigationDemo>();
 
+            System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildAndExport(level);
             scheduler.Configure(artifact.Asset, performance, agent);
