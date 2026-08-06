@@ -1,0 +1,19 @@
+{
+  "name": "CustomNavigation.Client",
+  "rootNamespace": "CustomNavigation.Runtime",
+  "references": [
+    "CustomNavigation.Authoring",
+    "CustomNavigation.Runtime",
+    "Unity.InputSystem"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
+
