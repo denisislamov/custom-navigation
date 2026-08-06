@@ -27,4 +27,3 @@ SOFTWARE.
 This package redistributes third-party components under their own licenses.
 See `Third Party Notices.md` — in particular DotRecast, distributed under the
 zlib license (`Runtime/DotRecast/LICENSE.txt`).
-
