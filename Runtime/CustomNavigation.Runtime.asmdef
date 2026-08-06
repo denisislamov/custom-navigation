@@ -1,0 +1,19 @@
+{
+  "name": "CustomNavigation.Runtime",
+  "rootNamespace": "CustomNavigation.Runtime",
+  "references": [
+    "CustomNavigation.Authoring"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "DotRecast.Core.dll",
+    "DotRecast.Detour.dll"
+  ],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

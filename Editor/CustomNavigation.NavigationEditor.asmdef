@@ -1,0 +1,19 @@
+{
+  "name": "CustomNavigation.NavigationEditor",
+  "rootNamespace": "CustomNavigation.Editor",
+  "references": [
+    "CustomNavigation.Authoring",
+    "CustomNavigation.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

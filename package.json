@@ -1,0 +1,42 @@
+{
+  "name": "com.datasakura.custom-navigation",
+  "version": "0.1.0",
+  "displayName": "Custom Navigation",
+  "description": "Physics-free navigation for Unity built on DotRecast. Offline (editor) navmesh baking, a deterministic binary artifact shared by client and server, a budgeted local query scheduler, and an optional authoritative HTTP navigation server. Does not use Unity Physics or the built-in NavMesh.",
+  "unity": "6000.3",
+  "license": "MIT",
+  "keywords": [
+    "navigation",
+    "navmesh",
+    "pathfinding",
+    "dotrecast",
+    "recast",
+    "detour",
+    "ai"
+  ],
+  "author": {
+    "name": "DataSakura"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/denisislamov/custom-navigation.git"
+  },
+  "documentationUrl": "https://github.com/denisislamov/custom-navigation",
+  "changelogUrl": "https://github.com/denisislamov/custom-navigation/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/denisislamov/custom-navigation/blob/main/LICENSE.md",
+  "dependencies": {
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.modules.imgui": "1.0.0",
+    "com.unity.modules.uielements": "1.0.0"
+  },
+  "hideInEditor": false,
+  "samples": [
+    {
+      "displayName": "Navigation Demos & Bots",
+      "description": "Bot agent, waypoint routes, demo presentation helpers and editor scene builders that generate the local / server / hybrid / multi-level demo scenes.",
+      "path": "Samples~/Demos"
+    }
+  ]
+}
+
