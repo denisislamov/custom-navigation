@@ -18,6 +18,7 @@ string navigationDataDirectory = NavigationArtifactStore.ResolveDataDirectory(ar
 string? pinnedManifest = NavigationArtifactStore.ResolvePinnedManifestPath(args);
 var registry = new NavigationRegistry(navigationDataDirectory, pinnedManifest, jsonOptions);
 string listenPrefix = ResolveListenPrefix(args);
+var uploadPolicy = NavigationUploadPolicy.Resolve(args, listenPrefix);
 
 using var listener = new HttpListener();
 listener.Prefixes.Add(listenPrefix);
@@ -50,6 +51,8 @@ else
         $"listening on {listenPrefix}");
 }
 
+Console.WriteLine($"[upload] {uploadPolicy.Describe()}");
+
 try
 {
     while (!shutdown.IsCancellationRequested)
@@ -68,7 +71,7 @@ try
             break;
         }
 
-        await HandleRequest(context, registry, jsonOptions);
+        await HandleRequest(context, registry, uploadPolicy, jsonOptions);
     }
 }
 finally
@@ -82,6 +85,7 @@ finally
 static async Task HandleRequest(
     HttpListenerContext context,
     NavigationRegistry registry,
+    NavigationUploadPolicy uploadPolicy,
     JsonSerializerOptions jsonOptions)
 {
     HttpListenerRequest request = context.Request;
@@ -143,6 +147,78 @@ static async Task HandleRequest(
                     registry.DataDirectory,
                     registry.TryGetActive(),
                     jsonOptions),
+                jsonOptions);
+            return;
+        }
+
+        if (request.HttpMethod == "POST" && path == "/artifacts")
+        {
+            if (!uploadPolicy.IsAuthorized(request, out string uploadRejection))
+            {
+                Console.WriteLine($"[upload] Denied: {uploadRejection}");
+                await WriteJson(
+                    response,
+                    HttpStatusCode.Forbidden,
+                    new ArtifactUploadResponse(
+                        false,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        false,
+                        uploadRejection),
+                    jsonOptions);
+                return;
+            }
+
+            ArtifactUploadRequest? upload;
+            try
+            {
+                upload = await JsonSerializer.DeserializeAsync<ArtifactUploadRequest>(
+                    request.InputStream,
+                    jsonOptions);
+            }
+            catch (JsonException exception)
+            {
+                await WriteJson(
+                    response,
+                    HttpStatusCode.BadRequest,
+                    new ArtifactUploadResponse(
+                        false,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        false,
+                        "Invalid JSON: " + exception.Message),
+                    jsonOptions);
+                return;
+            }
+
+            if (upload is null)
+            {
+                await WriteJson(
+                    response,
+                    HttpStatusCode.BadRequest,
+                    new ArtifactUploadResponse(
+                        false,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        false,
+                        "Empty upload body."),
+                    jsonOptions);
+                return;
+            }
+
+            ArtifactUploadResponse uploadResult = NavigationArtifactStore.Save(
+                registry.DataDirectory,
+                upload,
+                jsonOptions);
+
+            // No reload needed: the registry notices the new manifest timestamp itself.
+            await WriteJson(
+                response,
+                uploadResult.Success ? HttpStatusCode.OK : HttpStatusCode.BadRequest,
+                uploadResult,
                 jsonOptions);
             return;
         }

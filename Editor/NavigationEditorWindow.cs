@@ -501,7 +501,9 @@ namespace CustomNavigation.Editor
             EditorGUILayout.HelpBox(
                 "Build for Client produces a deterministic DotRecast binary and puts it into " +
                 "Generated/Navigation - that asset is exactly what ships with the app build.\n" +
-                "Export for Server separately uploads that built artifact to the navigation server folder.",
+                "Upload to Server sends that artifact to the running server over HTTP, which is " +
+                "the only way that works when the server is not on this machine.\n" +
+                "Export to Folder writes the same files into the server artifact folder instead.",
                 MessageType.Info);
 
             NavigationArtifactAsset builtArtifact = selectedLevel != null
@@ -517,9 +519,16 @@ namespace CustomNavigation.Editor
                     pendingAction = BuildForClient;
                 }
 
-                using (new EditorGUI.DisabledScope(builtArtifact == null))
+                using (new EditorGUI.DisabledScope(builtArtifact == null || serverRequestPending))
                 {
-                    if (GUILayout.Button("Export for Server", GUILayout.Height(30f)))
+                    if (GUILayout.Button(
+                            serverRequestPending ? "Uploading..." : "Upload to Server",
+                            GUILayout.Height(30f)))
+                    {
+                        UploadToServer(builtArtifact);
+                    }
+
+                    if (GUILayout.Button("Export to Folder", GUILayout.Height(30f)))
                     {
                         pendingAction = ExportForServer;
                     }
@@ -717,12 +726,12 @@ namespace CustomNavigation.Editor
                 NavigationServerExportResult export = NavigationArtifactBuilder.ExportForServer(selectedLevel);
                 progress.Stage("Writing the server files");
                 lastExportMessage =
-                    $"Exported to the server in {progress.ElapsedSeconds:0.0} s\n" +
+                    $"Exported to the server folder in {progress.ElapsedSeconds:0.0} s\n" +
                     $"{export.LevelId} · {NavigationArtifactIndex.Short(export.Hash)}\n" +
                     export.ServerDataPath +
                     (export.SetAsActive ? "\nMarked as active.manifest.json." : string.Empty) +
-                    "\nThe server picks the artifact up only after a restart - verify it with " +
-                    "\"Check /health\" in the Server tab.";
+                    "\nThis only reaches the server if it reads that very folder - " +
+                    "use Upload to Server for a remote one.";
                 Debug.Log(
                     $"[CustomNavigation] Exported artifact {export.Hash} to {export.ServerDataPath}.",
                     selectedLevel);
@@ -737,9 +746,41 @@ namespace CustomNavigation.Editor
             }
             catch (Exception exception)
             {
-                lastExportMessage = "Export for Server failed: " + exception.Message;
+                lastExportMessage = "Export to Folder failed: " + exception.Message;
                 Debug.LogException(exception, selectedLevel);
             }
+        }
+
+        /// <summary>
+        /// Sends the artifact to the running server over HTTP. Unlike the folder export
+        /// this works for a server on another machine, and it lands where the server
+        /// actually reads - no restart, no path guessing.
+        /// </summary>
+        private void UploadToServer(NavigationArtifactAsset artifact)
+        {
+            serverRequestPending = true;
+            lastExportMessage = "Uploading to " + NavigationServerEditorClient.BaseUrl + "...";
+            NavigationServerUploader.Upload(artifact, true, (success, message) =>
+            {
+                if (this == null)
+                {
+                    return;
+                }
+
+                serverRequestPending = false;
+                lastExportMessage = success ? message : "Upload failed: " + message;
+                if (success)
+                {
+                    Debug.Log("[CustomNavigation] " + message, artifact);
+                }
+                else
+                {
+                    Debug.LogWarning("[CustomNavigation] Upload failed: " + message, artifact);
+                }
+
+                artifactComparisons = null;
+                Repaint();
+            });
         }
 
         private void DrawSources()
@@ -1622,6 +1663,8 @@ namespace CustomNavigation.Editor
                 DrawSummaryRow("Server artifacts", NavigationArtifactBuilder.ResolveServerFolder());
             }
 
+            DrawArtifactFolderTools(settings);
+
             EditorGUILayout.HelpBox(
                 "The navmesh is baked offline in Unity (the Build & Budgets tab -> Build for Client). " +
                 "The server bakes nothing: it only loads the uploaded artifact and answers POST /path.",
@@ -1646,6 +1689,9 @@ namespace CustomNavigation.Editor
 
             EditorGUILayout.Space(8f);
             DrawLocalServer(settings);
+
+            EditorGUILayout.Space(8f);
+            DrawUploadSettings();
 
             EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Connection check", EditorStyles.boldLabel);
@@ -1680,6 +1726,112 @@ namespace CustomNavigation.Editor
             {
                 EditorGUILayout.HelpBox(serverStatusMessage, serverStatusType);
             }
+        }
+
+        /// <summary>
+        /// Credentials for <c>POST /artifacts</c>. Stored in EditorPrefs rather than the
+        /// settings asset on purpose: the asset lives in Resources and would carry the
+        /// secret into every player build.
+        /// </summary>
+        private void DrawUploadSettings()
+        {
+            EditorGUILayout.LabelField("Artifact upload", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Upload to Server (Build & Budgets tab) pushes the baked navmesh over HTTP, so " +
+                "the server does not have to share a file system with this machine.\n" +
+                "A server bound to 127.0.0.1 accepts uploads from this machine without a token. " +
+                "One listening on the network refuses them unless it was started with " +
+                "--upload-token <secret> and the same secret is entered here.",
+                MessageType.None);
+
+            string token = NavigationServerUploadToken.Value;
+            string edited = EditorGUILayout.PasswordField("Upload token", token);
+            if (!string.Equals(edited, token, StringComparison.Ordinal))
+            {
+                NavigationServerUploadToken.Value = edited;
+            }
+
+            EditorGUILayout.LabelField(
+                " ",
+                "Kept on this machine only (EditorPrefs), never shipped in a build.",
+                EditorStyles.miniLabel);
+        }
+
+        /// <summary>
+        /// Keeps <c>Server Artifact Folder</c> honest. The installed server reads
+        /// <c>NavigationServer/NavigationData</c>; when the setting points elsewhere the
+        /// folder export silently writes where nobody reads, which is impossible to spot
+        /// from the paths alone.
+        /// </summary>
+        private void DrawArtifactFolderTools(NavigationServerSettings settings)
+        {
+            bool installed = NavigationServerInstaller.IsInstalled;
+            bool mismatched = installed && !string.Equals(
+                settings.ServerArtifactFolder.TrimEnd('/'),
+                NavigationServerInstaller.InstalledArtifactFolder,
+                StringComparison.OrdinalIgnoreCase);
+
+            if (mismatched)
+            {
+                EditorGUILayout.HelpBox(
+                    $"The server is installed in '{NavigationServerInstaller.InstallFolderName}/' and " +
+                    $"reads '{NavigationServerInstaller.InstalledArtifactFolder}', but Server Artifact " +
+                    $"Folder points at '{settings.ServerArtifactFolder}'. Export to Folder would write " +
+                    "where the running server never looks.",
+                    MessageType.Warning);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(!installed || !mismatched))
+                {
+                    if (GUILayout.Button("Use the installed server folder", EditorStyles.miniButton))
+                    {
+                        NavigationServerInstaller.PointArtifactFolderAtInstall();
+                        artifactComparisons = null;
+                    }
+                }
+
+                if (GUILayout.Button("Choose folder...", EditorStyles.miniButton))
+                {
+                    ChooseServerArtifactFolder(settings);
+                }
+            }
+        }
+
+        private void ChooseServerArtifactFolder(NavigationServerSettings settings)
+        {
+            string projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
+            string current = NavigationArtifactBuilder.ResolveServerFolder();
+            string picked = EditorUtility.OpenFolderPanel(
+                "Server artifact folder",
+                Directory.Exists(current) ? current : projectRoot,
+                string.Empty);
+            if (string.IsNullOrEmpty(picked) || projectRoot == null)
+            {
+                return;
+            }
+
+            // The setting is stored relative to the project so the asset stays portable
+            // across machines; an outside folder has to keep its absolute path.
+            string full = Path.GetFullPath(picked);
+            string root = Path.GetFullPath(projectRoot);
+            string value = full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                ? full.Substring(root.Length + 1).Replace('\\', '/')
+                : full.Replace('\\', '/');
+
+            var serialized = new SerializedObject(settings);
+            SerializedProperty folder = serialized.FindProperty("serverArtifactFolder");
+            if (folder == null)
+            {
+                return;
+            }
+
+            folder.stringValue = value;
+            serialized.ApplyModifiedProperties();
+            NavigationServerSettings.InvalidateCache();
+            AssetDatabase.SaveAssets();
+            artifactComparisons = null;
         }
 
         /// <summary>
@@ -2018,7 +2170,8 @@ namespace CustomNavigation.Editor
 
                 artifactsStatusMessage =
                     $"Synchronized maps: {exported} in {progress.ElapsedSeconds:0.0} s. " +
-                    "Restart the navigation server so it picks up the changes.";
+                    "Written to the server artifact folder - a server reading another " +
+                    "folder needs Upload to Server instead.";
                 artifactsStatusType = MessageType.Info;
             }
             catch (NavigationBuildCanceledException)
@@ -2072,7 +2225,15 @@ namespace CustomNavigation.Editor
                 {
                     using (new EditorGUI.DisabledScope(!row.HasClient))
                     {
-                        if (GUILayout.Button("Export to Server", EditorStyles.miniButton))
+                        using (new EditorGUI.DisabledScope(serverRequestPending))
+                        {
+                            if (GUILayout.Button("Upload to Server", EditorStyles.miniButton))
+                            {
+                                UploadArtifact(row.ClientAsset);
+                            }
+                        }
+
+                        if (GUILayout.Button("Export to Folder", EditorStyles.miniButton))
                         {
                             ExportArtifact(row.ClientAsset);
                         }
@@ -2087,15 +2248,41 @@ namespace CustomNavigation.Editor
             }
         }
 
+        /// <summary>Pushes one map to the running server over HTTP.</summary>
+        private void UploadArtifact(NavigationArtifactAsset asset)
+        {
+            serverRequestPending = true;
+            artifactsStatusMessage = "Uploading " + asset.LevelId + "...";
+            artifactsStatusType = MessageType.None;
+            NavigationServerUploader.Upload(asset, true, (success, message) =>
+            {
+                if (this == null)
+                {
+                    return;
+                }
+
+                serverRequestPending = false;
+                artifactsStatusMessage = success ? message : "Upload failed: " + message;
+                artifactsStatusType = success ? MessageType.Info : MessageType.Error;
+                if (success)
+                {
+                    RefreshArtifacts();
+                }
+
+                Repaint();
+            });
+        }
+
         private void ExportArtifact(NavigationArtifactAsset asset)
         {
             try
             {
                 NavigationServerExportResult export = NavigationArtifactBuilder.ExportForServer(asset);
                 artifactsStatusMessage =
-                    $"Uploaded to the server: {export.LevelId} {NavigationArtifactIndex.Short(export.Hash)}\n" +
+                    $"Written to the server folder: {export.LevelId} {NavigationArtifactIndex.Short(export.Hash)}\n" +
                     export.ServerDataPath +
-                    "\nRestart the navigation server so it picks up the new active manifest.";
+                    "\nThis only reaches a server that reads that very folder - " +
+                    "use Upload to Server for a remote one.";
                 artifactsStatusType = MessageType.Info;
                 RefreshArtifacts();
             }

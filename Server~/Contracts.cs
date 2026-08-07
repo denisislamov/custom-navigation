@@ -64,3 +64,29 @@ public sealed record ArtifactsResponse(
     string LoadedArtifactHash,
     string DataDirectory,
     IReadOnlyList<ServerArtifactDto> Artifacts);
+
+/// <summary>
+/// Body of <c>POST /artifacts</c>: one baked navmesh pushed from the Unity editor.
+/// Uploading over HTTP is the only way to reach a server that does not share a file
+/// system with the machine running Unity.
+/// </summary>
+public sealed class ArtifactUploadRequest
+{
+    /// <summary>The manifest exactly as Unity wrote it, so hashes stay byte-identical.</summary>
+    public string? ManifestJson { get; init; }
+
+    /// <summary>Base64 of the .navmesh.bytes payload.</summary>
+    public string? DataBase64 { get; init; }
+
+    /// <summary>Make this the map served when a request carries no levelId.</summary>
+    public bool SetActive { get; init; } = true;
+}
+
+public sealed record ArtifactUploadResponse(
+    bool Success,
+    string LevelId,
+    string ArtifactHash,
+    string FileName,
+    bool SetActive,
+    string Message);
+

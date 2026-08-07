@@ -82,14 +82,21 @@ compiles it. Installing also points `NavigationServerSettings.serverArtifactFold
 
 Then:
 
-1. Build a level (**Build & Budgets** tab) and press **Export for Server**.
+1. Build a level (**Build & Budgets** tab) and press **Upload to Server** — this pushes
+   the artifact over HTTP, so it also works when the server is not on this machine.
+   **Export to Folder** writes the same files into the server artifact folder instead,
+   which only helps a server that reads that very folder.
 2. **Start server** in the Server tab. The first launch restores packages and compiles,
    so give it a few seconds.
 3. **Check /health** to confirm which artifact is loaded.
 
 The order does not matter: the server starts fine with an empty `NavigationData` and
-reports `status: "no-artifact"` until you export. Re-exporting is picked up without a
+reports `status: "no-artifact"` until you upload. New artifacts are picked up without a
 restart.
+
+Uploads are open on a server bound to `127.0.0.1`. Once it listens on a real network
+interface it refuses them unless started with `--upload-token <secret>` and the same
+secret is entered in the Server tab — the token is kept in EditorPrefs, never in a build.
 
 ### Which map answers a request
 

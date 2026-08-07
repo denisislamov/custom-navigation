@@ -14,6 +14,30 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 - `Assets/CustomNavigation/Generated/Navigation` для локального клиента;
 - `NavigationServer/NavigationData` для сервера.
 
+## Как доставить артефакт на сервер
+
+Есть два пути.
+
+**1. `POST /artifacts` (основной).** Кнопка `Upload to Server` в Unity шлёт испечённый
+navmesh прямо на адрес из `NavigationServerSettings`. Работает, когда сервер на другой
+машине или в контейнере — общая файловая система не нужна. Сервер проверяет schema,
+версию DotRecast, SHA-256 и число полигонов **до** записи, поэтому битая выгрузка не
+может оставить полуживую карту. Имя файла берётся из манифеста и принимается, только
+если это простое `<level>.<hash>.navmesh.bytes` — выйти за пределы папки данных нельзя.
+
+Загрузка разрешена без токена, только если сервер слушает loopback. Как только он
+доступен из сети, нужен `--upload-token`:
+
+```bash
+./NavigationServer/run-server.sh --listen 'http://*:5079/' --upload-token 'секрет'
+```
+
+Тот же секрет вводится в поле `Upload token` во вкладке `Server`. Он хранится в
+EditorPrefs, а не в ассете, поэтому не попадает в билд игры.
+
+**2. Запись в папку.** Кнопка `Export to Folder` кладёт файлы в
+`NavigationServer/NavigationData`. Годится только для сервера на этой же машине.
+
 ## Какую карту сервер отдаёт на запрос
 
 Сервер держит **все** экспортированные карты из своей папки `NavigationData` и выбирает
@@ -32,7 +56,19 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 перезапуска**. При загрузке проверяются schema version, DotRecast version, SHA-256
 artifact и число полигонов.
 
-Отсутствие артефактов — не ошибка: сервер стартует, слушает порт и сообщает об этом в
+Отсутствие артефактов — не ошибка: сервер стартует, слушает порт и сообщает об этом в[startup] Loading the exported DotRecast artifact...
+Unhandled exception. System.IO.FileNotFoundException: Navigation manifest was not found. Export navigation from Unity first.
+File name: '/Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/NavigationData/active.manifest.json'
+at DotRecastServer.Navigation.NavigationArtifactStore.Load(String manifestPath, JsonSerializerOptions jsonOptions) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Navigation/NavigationArtifactStore.cs:line 19
+at Program.<Main>$(String[] args) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Program.cs:line 18
+at Program.<Main>(String[] args)
+[startup] Loading the exported DotRecast artifact...
+Unhandled exception. System.IO.FileNotFoundException: Navigation manifest was not found. Export navigation from Unity first.
+File name: '/Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/NavigationData/active.manifest.json'
+at DotRecastServer.Navigation.NavigationArtifactStore.Load(String manifestPath, JsonSerializerOptions jsonOptions) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Navigation/NavigationArtifactStore.cs:line 19
+at Program.<Main>$(String[] args) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Program.cs:line 18
+at Program.<Main>(String[] args)
+
 `GET /health` (`status: "no-artifact"`) и в ответе `POST /path`. Это нужно, чтобы можно
 было поднять сервер до первого экспорта из Unity.
 
@@ -65,6 +101,7 @@ client/AP isolation.
 | `--listen <prefix>` | HTTP prefix, например `http://*:5079/`. По умолчанию `http://127.0.0.1:5079/`. |
 | `--data <folder>` | Папка с артефактами. По умолчанию `NavigationData` рядом с проектом сервера. |
 | `--manifest <path>` | Жёстко закрепить одну карту: она становится ответом по умолчанию вместо `active.manifest.json`. Полезно для выделенного инстанса на конкретный уровень. |
+| `--upload-token <secret>` | Требовать заголовок `X-Navigation-Token` для `POST /artifacts`. Обязателен, если сервер слушает не loopback. |
 
 ## API
 
@@ -72,6 +109,7 @@ client/AP isolation.
   число полигонов, папка данных и список доступных уровней (`availableLevels`).
   Можно спросить про конкретную карту: `GET /health?level=<levelId>`.
 - `GET /artifacts` — все карты в папке данных с их состоянием.
+- `POST /artifacts` — загрузить карту: `{ "manifestJson": "...", "dataBase64": "...", "setActive": true }`.
 - `POST /path` — авторитетный Detour path query.
 
 Сервер не передаёт и не генерирует presentation geometry. Игровая геометрия сохранена в Unity-сцене, а сервер загружает готовый navmesh artifact, экспортированный из тех же `NavigationGeometrySource`.

@@ -26,6 +26,22 @@ public static class NavigationArtifactStore
             jsonOptions)
             ?? throw new InvalidDataException("Navigation manifest is empty.");
 
+        string directory = Path.GetDirectoryName(Path.GetFullPath(manifestPath))
+                           ?? throw new InvalidOperationException("Cannot resolve manifest directory.");
+        string dataPath = Path.Combine(directory, manifest.FileName);
+        byte[] data = File.ReadAllBytes(dataPath);
+        return Create(manifest, data, dataPath);
+    }
+
+    /// <summary>
+    /// Validates a manifest/payload pair and builds the queryable navmesh. Shared by
+    /// disk loading and by HTTP uploads so both go through exactly the same checks.
+    /// </summary>
+    public static ServerNavigation Create(
+        NavigationArtifactManifest manifest,
+        byte[] data,
+        string sourceLabel)
+    {
         if (!string.Equals(manifest.SchemaVersion, SupportedSchemaVersion, StringComparison.Ordinal))
         {
             throw new InvalidDataException(
@@ -40,10 +56,6 @@ public static class NavigationArtifactStore
                 $"server uses '{SupportedDotRecastVersion}'.");
         }
 
-        string directory = Path.GetDirectoryName(Path.GetFullPath(manifestPath))
-                           ?? throw new InvalidOperationException("Cannot resolve manifest directory.");
-        string dataPath = Path.Combine(directory, manifest.FileName);
-        byte[] data = File.ReadAllBytes(dataPath);
         string actualHash = ComputeSha256(data);
         if (!string.Equals(actualHash, manifest.ArtifactHash, StringComparison.OrdinalIgnoreCase))
         {
@@ -66,13 +78,129 @@ public static class NavigationArtifactStore
 
         Console.WriteLine(
             $"[artifact] Loaded level={manifest.LevelId}, hash={actualHash}, " +
-            $"polygons={polygonCount}, sourceMeshes={manifest.SourceMeshCount}, file={dataPath}");
+            $"polygons={polygonCount}, sourceMeshes={manifest.SourceMeshCount}, file={sourceLabel}");
         return new ServerNavigation(
             navMesh,
             manifest.LevelId,
             manifest.Description,
             actualHash,
             polygonCount);
+    }
+
+    /// <summary>
+    /// Stores an uploaded artifact next to the ones exported through the file system.
+    /// The payload is fully validated before anything is written, so a bad upload can
+    /// never leave the server with a half-written map.
+    /// </summary>
+    public static ArtifactUploadResponse Save(
+        string dataDirectory,
+        ArtifactUploadRequest request,
+        JsonSerializerOptions jsonOptions)
+    {
+        if (string.IsNullOrWhiteSpace(request.ManifestJson))
+        {
+            return Rejected("manifestJson is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.DataBase64))
+        {
+            return Rejected("dataBase64 is required.");
+        }
+
+        NavigationArtifactManifest? manifest;
+        try
+        {
+            manifest = JsonSerializer.Deserialize<NavigationArtifactManifest>(
+                request.ManifestJson!,
+                jsonOptions);
+        }
+        catch (JsonException exception)
+        {
+            return Rejected("Manifest is not valid JSON: " + exception.Message);
+        }
+
+        if (manifest is null || string.IsNullOrWhiteSpace(manifest.FileName))
+        {
+            return Rejected("Manifest is empty or carries no fileName.");
+        }
+
+        // The file name comes from the network and is used to build a path, so anything
+        // that could escape the data folder is refused outright.
+        string fileName = Path.GetFileName(manifest.FileName);
+        if (!string.Equals(fileName, manifest.FileName, StringComparison.Ordinal)
+            || fileName.Length == 0
+            || !fileName.EndsWith(".navmesh.bytes", StringComparison.Ordinal))
+        {
+            return Rejected(
+                $"Unexpected artifact file name '{manifest.FileName}'. " +
+                "It must be a plain '<level>.<hash>.navmesh.bytes' name.");
+        }
+
+        byte[] data;
+        try
+        {
+            data = Convert.FromBase64String(request.DataBase64!);
+        }
+        catch (FormatException exception)
+        {
+            return Rejected("dataBase64 is not valid base64: " + exception.Message);
+        }
+
+        try
+        {
+            // Parses the navmesh and checks schema, DotRecast version, hash and polygon
+            // count - the upload is rejected before a single byte reaches the disk.
+            Create(manifest, data, $"upload:{fileName}");
+        }
+        catch (Exception exception)
+        {
+            return Rejected(exception.Message);
+        }
+
+        Directory.CreateDirectory(dataDirectory);
+        string manifestFileName =
+            Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fileName))
+            + ".manifest.json";
+        string manifestJson = request.ManifestJson!.TrimEnd() + "\n";
+
+        File.WriteAllBytes(Path.Combine(dataDirectory, fileName), data);
+        File.WriteAllText(
+            Path.Combine(dataDirectory, manifestFileName),
+            manifestJson,
+            new UTF8Encoding(false));
+        if (request.SetActive)
+        {
+            File.WriteAllText(
+                Path.Combine(dataDirectory, ActiveManifestFileName),
+                manifestJson,
+                new UTF8Encoding(false));
+        }
+
+        Console.WriteLine(
+            $"[upload] Stored level={manifest.LevelId}, hash={manifest.ArtifactHash}, " +
+            $"file={fileName}, active={request.SetActive}");
+
+        return new ArtifactUploadResponse(
+            true,
+            manifest.LevelId,
+            manifest.ArtifactHash,
+            fileName,
+            request.SetActive,
+            request.SetActive
+                ? "Uploaded and marked active."
+                : "Uploaded.");
+    }
+
+    private static ArtifactUploadResponse Rejected(string message)
+    {
+        Console.WriteLine($"[upload] Rejected: {message}");
+        return new ArtifactUploadResponse(
+            false,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            false,
+            message);
     }
 
     /// <summary>

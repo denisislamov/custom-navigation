@@ -4,6 +4,41 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-08-07
+
+### Added
+- **Artifacts can be uploaded to the server over HTTP** with the new `POST /artifacts`.
+  Writing into `NavigationData` only ever worked when the server shared a file system
+  with the machine running Unity, which a remote or containerised server does not.
+  **Upload to Server** (Build & Budgets tab and per row in Artifacts) pushes the baked
+  navmesh to whatever address the settings asset points at, and the running server
+  serves it immediately - no file copying, no restart.
+  - The payload is fully validated *before* anything is written: schema, DotRecast
+    version, SHA-256 and polygon count. A corrupt upload cannot leave a half-written map.
+  - The artifact file name is taken from the manifest and refused unless it is a plain
+    `<level>.<hash>.navmesh.bytes`, so an upload cannot escape the data folder.
+  - Uploads are open on a loopback server, and require `--upload-token <secret>` plus a
+    matching `X-Navigation-Token` header once the server listens on a real interface -
+    it never silently accepts navmesh writes from the network.
+  - The token is stored in EditorPrefs, not in the settings asset, so it is never
+    shipped inside a player build.
+- The Server tab has a **Choose folder...** picker for the server artifact folder, which
+  previously could only be typed by hand.
+
+### Fixed
+- **The server artifact folder could silently diverge from the installed server.**
+  Installing the server only repointed the folder when the settings asset already
+  existed, so a project that created it afterwards kept the default
+  `DotRecastServer/NavigationData` while the server ran on
+  `NavigationServer/NavigationData` - and *Export for Server* wrote where nothing read.
+  Installing now creates the settings asset when missing, and the Server tab warns about
+  a mismatch and offers a one-click fix.
+
+### Changed
+- **Export for Server** is now **Export to Folder**, and its messages no longer claim the
+  server needs a restart (it hot-reloads) or that the files reached a server that may
+  read a different folder.
+
 ## [0.5.0] - 2026-08-07
 
 ### Fixed

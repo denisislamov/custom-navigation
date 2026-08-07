@@ -36,7 +36,7 @@ namespace CustomNavigation.Editor
             Send(UnityWebRequest.Get(BaseUrl.TrimEnd('/') + path), BaseUrl.TrimEnd('/') + path, completion);
         }
 
-        /// <summary>POST with a JSON body. Used by the Path Probe in Server mode.</summary>
+        /// <summary>POST with a JSON body. Used by the Path Probe and by artifact uploads.</summary>
         public static void Post(string path, string json, Action<bool, string> completion)
         {
             string url = BaseUrl.TrimEnd('/') + path;
@@ -46,6 +46,14 @@ namespace CustomNavigation.Editor
                 downloadHandler = new DownloadHandlerBuffer()
             };
             request.SetRequestHeader("Content-Type", "application/json");
+
+            // A server exposed to the network refuses uploads without this header.
+            string token = NavigationServerUploadToken.Value;
+            if (!string.IsNullOrEmpty(token))
+            {
+                request.SetRequestHeader("X-Navigation-Token", token);
+            }
+
             Send(request, url, completion);
         }
 
@@ -76,8 +84,12 @@ namespace CustomNavigation.Editor
 
                 Finish();
                 bool success = request.result == UnityWebRequest.Result.Success;
-                string payload = success
-                    ? request.downloadHandler.text
+
+                // A 4xx/5xx still carries a JSON body that explains the refusal, and it
+                // is far more useful than the bare "HTTP/1.1 400 Bad Request".
+                string body = request.downloadHandler != null ? request.downloadHandler.text : null;
+                string payload = success || !string.IsNullOrWhiteSpace(body)
+                    ? body
                     : $"{url}: {request.error}";
                 request.Dispose();
                 completion?.Invoke(success, payload);

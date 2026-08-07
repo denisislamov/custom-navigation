@@ -119,11 +119,13 @@ namespace CustomNavigation.Editor
 
         /// <summary>
         /// Points <see cref="NavigationServerSettings.ServerArtifactFolder"/> at the
-        /// installed server, so <c>Export for Server</c> writes where the server reads.
+        /// installed server, so <c>Export to Folder</c> writes where the server reads.
+        /// Creates the settings asset when it does not exist yet - otherwise the folder
+        /// would silently keep the default and diverge from the installed server.
         /// </summary>
         public static void PointArtifactFolderAtInstall()
         {
-            NavigationServerSettings settings = NavigationServerSettings.LoadOrNull();
+            NavigationServerSettings settings = LoadOrCreateSettings();
             if (settings == null)
             {
                 return;
@@ -142,6 +144,43 @@ namespace CustomNavigation.Editor
             AssetDatabase.SaveAssets();
             Debug.Log(
                 $"[CustomNavigation] Server artifacts will now be exported to '{InstalledArtifactFolder}'.");
+        }
+
+        /// <summary>Loads the settings asset, creating it in Resources when missing.</summary>
+        public static NavigationServerSettings LoadOrCreateSettings()
+        {
+            NavigationServerSettings settings = NavigationServerSettings.LoadOrNull();
+            if (settings != null)
+            {
+                return settings;
+            }
+
+            string folder = NavigationServerSettings.ResourcesFolder;
+            if (!AssetDatabase.IsValidFolder(folder))
+            {
+                string[] parts = folder.Split('/');
+                string current = parts[0];
+                for (int i = 1; i < parts.Length; i++)
+                {
+                    string next = current + "/" + parts[i];
+                    if (!AssetDatabase.IsValidFolder(next))
+                    {
+                        AssetDatabase.CreateFolder(current, parts[i]);
+                    }
+
+                    current = next;
+                }
+            }
+
+            settings = ScriptableObject.CreateInstance<NavigationServerSettings>();
+            settings.name = NavigationServerSettings.ResourceName;
+            AssetDatabase.CreateAsset(settings, NavigationServerSettings.AssetPath);
+            AssetDatabase.SaveAssets();
+            AssetDatabase.Refresh();
+            NavigationServerSettings.InvalidateCache();
+            Debug.Log(
+                $"[CustomNavigation] Created {NavigationServerSettings.AssetPath}.");
+            return NavigationServerSettings.LoadOrNull();
         }
 
         /// <summary>True when a .NET SDK capable of building the server is on PATH.</summary>
@@ -537,6 +576,7 @@ namespace CustomNavigation.Editor
         }
     }
 }
+
 
 
 
