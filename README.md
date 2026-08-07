@@ -66,6 +66,41 @@ your navigation server, create the asset in **your project** at
 `Assets/Resources/CustomNavigation/NavigationServerSettings.asset`
 (Create → Custom Navigation → Server Settings). Without it, built-in defaults are used.
 
+## The navigation server
+
+The package ships the reference .NET 9 navigation server in `Server~`. Unity ignores
+folders ending with `~`, which keeps the server sources out of the Unity compilation —
+but it also means they live in the read-only `Library/PackageCache`, so the server
+cannot be built or run in place. Install it into your project first:
+
+**Tools → Custom Navigation → Navigation Editor → Server tab → Install navigation server**
+(or **Tools → Custom Navigation → Server → Install Navigation Server**).
+
+The server is copied to `<project>/NavigationServer`, next to `Assets`, so Unity never
+compiles it. Installing also points `NavigationServerSettings.serverArtifactFolder` at
+`NavigationServer/NavigationData`, so **Export for Server** writes where the server reads.
+
+Then:
+
+1. Build a level (**Build & Budgets** tab) and press **Export for Server**.
+2. **Start server** in the Server tab. The first launch restores packages and compiles,
+   so give it a few seconds.
+3. **Check /health** to confirm which artifact is loaded.
+
+The server runs as a child process of the editor, logs into the Unity Console and is
+stopped when you quit Unity or press **Stop server**. Requires the
+[.NET 9 SDK](https://dotnet.microsoft.com/download) on `PATH`.
+
+Outside the editor, run it directly:
+
+```bash
+cd NavigationServer
+./run-server.sh --listen "http://*:5079/"
+```
+
+Reinstalling from the package overwrites the sources but keeps `NavigationData`, so
+baked artifacts survive a package update.
+
 ## Third-party
 
 DotRecast is distributed under the zlib license — see `Third Party Notices.md`.

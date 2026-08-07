@@ -4,6 +4,31 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-08-07
+
+### Added
+- **The standalone navigation server is now usable straight from the package.** It has
+  always shipped inside the package as `Server~`, but that folder resolves to
+  `Library/PackageCache/...`, which is read-only and wiped on reimport, so it could
+  neither be built nor run in place.
+  - `NavigationServerInstaller` copies the server into `<project>/NavigationServer`
+    (next to `Assets`, so Unity never compiles its .NET sources), keeps existing
+    `NavigationData` on reinstall, and points
+    `NavigationServerSettings.serverArtifactFolder` at the installed copy so
+    **Export for Server** writes exactly where the server reads.
+  - `NavigationServerProcess` starts and stops the server as a child process of the
+    editor, mirrors its stdout/stderr into the Unity Console, survives assembly
+    reloads via `SessionState`, kills the whole `dotnet run` process tree on stop and
+    shuts the server down on `EditorApplication.quitting`.
+  - The **Server** tab of the Navigation Editor gained a *Local server* section:
+    install / reinstall, start / stop, install path and live status, plus a .NET SDK
+    availability check.
+  - Menu shortcuts under **Tools → Custom Navigation → Server**: *Install Navigation
+    Server*, *Start Server*, *Stop Server*, *Open Server Folder*.
+- The editor passes `--listen` and `--manifest` to the server explicitly, and refuses
+  to start it when no `active.manifest.json` has been exported yet - instead of
+  letting the server fail with a file-not-found at startup.
+
 ## [0.3.3] - 2026-08-07
 
 ### Fixed

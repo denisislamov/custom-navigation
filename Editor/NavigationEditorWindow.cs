@@ -1645,6 +1645,9 @@ namespace CustomNavigation.Editor
             }
 
             EditorGUILayout.Space(8f);
+            DrawLocalServer(settings);
+
+            EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField("Connection check", EditorStyles.boldLabel);
             if (string.IsNullOrEmpty(serverAddressInput))
             {
@@ -1677,6 +1680,134 @@ namespace CustomNavigation.Editor
             {
                 EditorGUILayout.HelpBox(serverStatusMessage, serverStatusType);
             }
+        }
+
+        /// <summary>
+        /// Install / run the bundled standalone server. It ships inside the package as
+        /// <c>Server~</c>, which Unity ignores, so it must be copied into the project
+        /// (outside Assets) before it can be built and started.
+        /// </summary>
+        private void DrawLocalServer(NavigationServerSettings settings)
+        {
+            EditorGUILayout.LabelField("Local server", EditorStyles.boldLabel);
+
+            bool installed = NavigationServerInstaller.IsInstalled;
+            bool running = NavigationServerProcess.IsRunning;
+
+            if (!installed)
+            {
+                EditorGUILayout.HelpBox(
+                    "The package ships the reference .NET navigation server, but it lives in a " +
+                    "read-only package folder. Install it into the project to build and run it.\n" +
+                    $"It will be copied to '{NavigationServerInstaller.InstallFolderName}/' next " +
+                    "to Assets, so Unity never compiles its sources.",
+                    MessageType.Info);
+
+                if (GUILayout.Button("Install navigation server", GUILayout.Height(30f)))
+                {
+                    InstallLocalServer();
+                }
+
+                return;
+            }
+
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                DrawSummaryRow("Installed at", NavigationServerInstaller.InstallPath);
+                DrawSummaryRow("Status", running
+                    ? $"Running (pid {NavigationServerProcess.ProcessId})"
+                    : "Stopped");
+            }
+
+            if (running)
+            {
+                EditorGUILayout.HelpBox(
+                    "The server is running as a child process of the editor and writes to the " +
+                    "Unity Console. It is stopped when you quit Unity.",
+                    MessageType.None);
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(running))
+                {
+                    if (GUILayout.Button("Start server", GUILayout.Height(26f)))
+                    {
+                        StartLocalServer();
+                    }
+                }
+
+                using (new EditorGUI.DisabledScope(!running))
+                {
+                    if (GUILayout.Button("Stop server", GUILayout.Height(26f)))
+                    {
+                        NavigationServerProcess.Stop();
+                        serverStatusMessage = "Navigation server stopped.";
+                        serverStatusType = MessageType.None;
+                    }
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Open server folder", EditorStyles.miniButton))
+                {
+                    EditorUtility.RevealInFinder(NavigationServerInstaller.InstallPath);
+                }
+
+                if (GUILayout.Button("Reinstall from package", EditorStyles.miniButton))
+                {
+                    if (EditorUtility.DisplayDialog(
+                            "Reinstall navigation server",
+                            "Overwrite the server sources with the copy from the package?\n\n" +
+                            "Baked artifacts in NavigationData are kept.",
+                            "Reinstall",
+                            "Cancel"))
+                    {
+                        InstallLocalServer(overwrite: true);
+                    }
+                }
+            }
+        }
+
+        private void InstallLocalServer(bool overwrite = false)
+        {
+            if (!NavigationServerInstaller.TryInstall(overwrite, out string path, out string error))
+            {
+                serverStatusMessage = error;
+                serverStatusType = MessageType.Error;
+                return;
+            }
+
+            NavigationServerInstaller.PointArtifactFolderAtInstall();
+            artifactComparisons = null;
+
+            if (!NavigationServerInstaller.IsDotnetAvailable(out string version))
+            {
+                serverStatusMessage =
+                    $"Server installed at {path}, but the .NET SDK was not found on PATH. " +
+                    "Install .NET 9 to build and run it.";
+                serverStatusType = MessageType.Warning;
+                return;
+            }
+
+            serverStatusMessage = $"Server installed at {path} (.NET SDK {version}).";
+            serverStatusType = MessageType.Info;
+        }
+
+        private void StartLocalServer()
+        {
+            if (!NavigationServerProcess.TryStart(out string error))
+            {
+                serverStatusMessage = error;
+                serverStatusType = MessageType.Error;
+                return;
+            }
+
+            serverStatusMessage =
+                "Server starting - the first launch also restores NuGet packages and compiles it, " +
+                "so give it a few seconds before checking /health.";
+            serverStatusType = MessageType.Info;
         }
 
         private void ApplyServerAddress(NavigationServerSettings settings)
