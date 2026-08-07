@@ -13,7 +13,6 @@ namespace CustomNavigation.Editor
     {
         public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastHybridPredicted.unity";
 
-        [MenuItem("Tools/Custom Navigation/Rebuild HybridPredicted Scene", priority = 131)]
         public static void Rebuild()
         {
             Scene scene = EditorSceneManager.OpenScene(

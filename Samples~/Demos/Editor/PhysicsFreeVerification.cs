@@ -41,7 +41,6 @@ namespace CustomNavigation.Editor
             "UnityEngine.AI.NavMeshObstacle"
         };
 
-        [MenuItem("Tools/Custom Navigation/Verify No Unity Physics")]
         public static void Verify()
         {
             VerifyProjectSources();

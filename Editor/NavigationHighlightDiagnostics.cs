@@ -15,7 +15,6 @@ namespace CustomNavigation.Editor
     /// </summary>
     internal static class NavigationHighlightDiagnostics
     {
-        [MenuItem("Tools/Custom Navigation/Diagnostics/Navigation Highlight Report", priority = 202)]
         private static void Report()
         {
             var report = new StringBuilder();

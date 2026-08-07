@@ -74,7 +74,7 @@ but it also means they live in the read-only `Library/PackageCache`, so the serv
 cannot be built or run in place. Install it into your project first:
 
 **Tools → Custom Navigation → Navigation Editor → Server tab → Install navigation server**
-(or **Tools → Custom Navigation → Server → Install Navigation Server**).
+(the Server tab is the only place that drives the local server).
 
 The server is copied to `<project>/NavigationServer`, next to `Assets`, so Unity never
 compiles it. Installing also points `NavigationServerSettings.serverArtifactFolder` at

@@ -26,7 +26,6 @@ namespace CustomNavigation.Editor
         private static readonly Vector2 FloorSize = new Vector2(28f, 20f);
         private static readonly Vector3 PlayerStart = new Vector3(-11f, 0f, -7f);
 
-        [MenuItem("Tools/Custom Navigation/Rebuild LocalOnly Bots Scene", priority = 130)]
         public static void Rebuild()
         {
             EnsureAssetFolder(DemoFolder);

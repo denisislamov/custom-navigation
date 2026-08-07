@@ -56,7 +56,6 @@ namespace CustomNavigation.Editor
             };
         }
 
-        [MenuItem("Tools/Custom Navigation/Rebuild DotRecast Demo Scene")]
         public static void RebuildScene()
         {
             Scene scene = OpenStaticArenaSource();
@@ -96,7 +95,6 @@ namespace CustomNavigation.Editor
                 runtimeObject);
         }
 
-        [MenuItem("Tools/Custom Navigation/Rebuild Server Client Scene")]
         public static void RebuildServerClientScene()
         {
             Scene scene = OpenStaticArenaSource();

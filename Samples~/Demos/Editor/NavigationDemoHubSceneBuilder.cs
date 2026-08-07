@@ -27,7 +27,6 @@ namespace CustomNavigation.Editor
             MultiLevelDemoSceneBuilder.ScenePath
         };
 
-        [MenuItem("Tools/Custom Navigation/Rebuild Demo Hub Scene", priority = 90)]
         public static void Rebuild()
         {
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -53,7 +52,6 @@ namespace CustomNavigation.Editor
                 root);
         }
 
-        [MenuItem("Tools/Custom Navigation/Diagnostics/Review Demo Levels", priority = 201)]
         public static void ReviewDemoLevels()
         {
             if (EditorApplication.isPlayingOrWillChangePlaymode)

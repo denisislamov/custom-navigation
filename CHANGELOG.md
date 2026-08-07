@@ -4,6 +4,20 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.2] - 2026-08-08
+
+### Changed
+- **The Tools → Custom Navigation menu was trimmed to the essentials**: *Navigation
+  Editor* and *Create Bot Agent Prefab* (sample). Removed as menu items:
+  - the *Server* submenu (Install / Start / Stop / Open Folder) - the Server tab of the
+    Navigation Editor is the single place to drive the local server, with the state
+    visible right next to the buttons;
+  - every *Rebuild ... Scene* entry of the sample and *Rebuild Demo Hub Scene*;
+  - the *Diagnostics* submenu (Artifact Roundtrip Test, Navigation Highlight Report,
+    Review Demo Levels) and *Verify No Unity Physics*.
+  The underlying methods are intact and callable from code; only the `[MenuItem]`
+  attributes were removed, so the entries can come back at any time.
+
 ## [0.6.1] - 2026-08-07
 
 ### Changed

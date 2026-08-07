@@ -29,7 +29,6 @@ namespace CustomNavigation.Editor
         private static readonly Vector3 PlayerStart = new Vector3(-11f, 0f, -3f);
         private static readonly Vector3 InitialDestination = new Vector3(19f, 5f, 3f);
 
-        [MenuItem("Tools/Custom Navigation/Rebuild Multi-Level Player Scene", priority = 132)]
         public static void Rebuild()
         {
             EnsureAssetFolder(DemoFolder);

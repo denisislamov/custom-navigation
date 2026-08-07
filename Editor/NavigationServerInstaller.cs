@@ -498,84 +498,12 @@ namespace CustomNavigation.Editor
         }
     }
 
-    /// <summary>
-    /// Menu shortcuts for the local server, so it can be driven without opening the
-    /// Navigation Editor window.
-    /// </summary>
-    internal static class NavigationServerMenu
-    {
-        [MenuItem("Tools/Custom Navigation/Server/Install Navigation Server", priority = 120)]
-        private static void Install()
-        {
-            if (!NavigationServerInstaller.TryInstall(
-                    overwrite: false,
-                    out string path,
-                    out string error))
-            {
-                Debug.LogError($"[CustomNavigation] {error}");
-                return;
-            }
-
-            NavigationServerInstaller.PointArtifactFolderAtInstall();
-            Debug.Log($"[CustomNavigation] Navigation server installed at {path}.");
-
-            if (!NavigationServerInstaller.IsDotnetAvailable(out string version))
-            {
-                Debug.LogWarning(
-                    "[CustomNavigation] The .NET SDK was not found on PATH. " +
-                    "Install .NET 9 to build and run the navigation server.");
-                return;
-            }
-
-            Debug.Log($"[CustomNavigation] .NET SDK {version} detected.");
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Install Navigation Server", true)]
-        private static bool ValidateInstall()
-        {
-            return !NavigationServerInstaller.IsInstalled;
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Start Server", priority = 121)]
-        private static void Start()
-        {
-            if (!NavigationServerProcess.TryStart(out string error))
-            {
-                Debug.LogError($"[CustomNavigation] {error}");
-            }
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Start Server", true)]
-        private static bool ValidateStart()
-        {
-            return NavigationServerInstaller.IsInstalled && !NavigationServerProcess.IsRunning;
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Stop Server", priority = 122)]
-        private static void StopServer()
-        {
-            NavigationServerProcess.Stop();
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Stop Server", true)]
-        private static bool ValidateStop()
-        {
-            return NavigationServerProcess.IsRunning;
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Open Server Folder", priority = 140)]
-        private static void OpenFolder()
-        {
-            EditorUtility.RevealInFinder(NavigationServerInstaller.InstallPath);
-        }
-
-        [MenuItem("Tools/Custom Navigation/Server/Open Server Folder", true)]
-        private static bool ValidateOpenFolder()
-        {
-            return NavigationServerInstaller.IsInstalled;
-        }
-    }
+    // The Server submenu (Install / Start / Stop / Open Folder) was removed on purpose:
+    // the Server tab of the Navigation Editor is the single place to drive the local
+    // server, so its state (installed, running, artifact folder) is always visible
+    // right next to the buttons.
 }
+
 
 
 

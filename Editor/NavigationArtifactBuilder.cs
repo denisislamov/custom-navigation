@@ -107,7 +107,6 @@ namespace CustomNavigation.Editor
             NavigationServerSettings.DefaultServerArtifactFolder;
         private const int WalkableFlag = 1;
 
-        [MenuItem("Tools/Custom Navigation/Diagnostics/Artifact Roundtrip Test", priority = 200)]
         private static void RunArtifactRoundtripTest()
         {
             GameObject root = null;
