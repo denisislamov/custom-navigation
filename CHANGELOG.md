@@ -4,6 +4,20 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-08-07
+
+### Fixed
+- **Package installed from a git URL failed to compile** (`CS0246: The type or
+  namespace name 'DotRecast' could not be found`). Every `.meta` file in the package
+  was truncated to `fileFormatVersion` + `guid` with no importer block. Unity can
+  silently repair those for writable (embedded/local) packages, but
+  `Library/PackageCache` is immutable, so the DotRecast DLLs were never registered
+  as managed plugins and the asmdef `precompiledReferences` could not resolve.
+  All `.meta` files now carry a complete `PluginImporter` / `MonoImporter` block
+  (GUIDs unchanged, so existing references keep working).
+- `DotRecast.Recast.dll` is now marked editor-only - the runtime never bakes, it
+  only loads a prebuilt navmesh - which also keeps it out of player builds.
+
 ## [0.2.0] - 2026-08-07
 
 ### Added
