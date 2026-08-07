@@ -87,6 +87,18 @@ Then:
    so give it a few seconds.
 3. **Check /health** to confirm which artifact is loaded.
 
+The order does not matter: the server starts fine with an empty `NavigationData` and
+reports `status: "no-artifact"` until you export. Re-exporting is picked up without a
+restart.
+
+### Which map answers a request
+
+The server holds every level in its `NavigationData` folder and picks one per request:
+`POST /path` uses `levelId` from the body when present, otherwise the map that
+`active.manifest.json` points at - which *Export for Server* rewrites every time. With
+several exports of one level, the newest wins. `GET /health` lists `availableLevels`,
+and `GET /health?level=<levelId>` inspects a specific map.
+
 The server runs as a child process of the editor, logs into the Unity Console and is
 stopped when you quit Unity or press **Stop server**. Requires the
 [.NET 9 SDK](https://dotnet.microsoft.com/download) on `PATH`.

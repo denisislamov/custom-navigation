@@ -49,10 +49,37 @@ namespace CustomNavigation.Runtime
             string clientPathFingerprint,
             Action<NavigationServerPathResult> completion)
         {
+            return RequestPath(
+                baseUrl,
+                requestId,
+                null,
+                start,
+                destination,
+                clientArtifactHash,
+                clientPathFingerprint,
+                completion);
+        }
+
+        /// <summary>
+        /// Same request, but pinned to a level. The server holds every exported map, so
+        /// <paramref name="levelId"/> is what tells it which one to path on. Leave it
+        /// null or empty to use the active map, which is what a single-level game wants.
+        /// </summary>
+        public static IEnumerator RequestPath(
+            string baseUrl,
+            string requestId,
+            string levelId,
+            Vector3 start,
+            Vector3 destination,
+            string clientArtifactHash,
+            string clientPathFingerprint,
+            Action<NavigationServerPathResult> completion)
+        {
             var result = new NavigationServerPathResult();
             var payload = new ServerPathRequest
             {
                 requestId = requestId,
+                levelId = levelId ?? string.Empty,
                 start = ServerVector3.FromUnity(start),
                 destination = ServerVector3.FromUnity(destination),
                 clientArtifactHash = clientArtifactHash ?? string.Empty,
@@ -129,6 +156,7 @@ namespace CustomNavigation.Runtime
         private sealed class ServerPathRequest
         {
             public string requestId;
+            public string levelId;
             public ServerVector3 start;
             public ServerVector3 destination;
             public string clientArtifactHash;

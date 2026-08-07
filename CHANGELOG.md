@@ -4,6 +4,35 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-08-07
+
+### Fixed
+- **The server crashed on startup when nothing had been exported yet**
+  (`Unhandled exception. System.IO.FileNotFoundException: Navigation manifest was not
+  found`). That was a chicken-and-egg trap: the server could not run before the first
+  export, which is exactly when you want it running. A missing artifact is now a normal
+  state - the server boots, listens, and reports it through `GET /health`
+  (`status: "no-artifact"`) and in the `POST /path` response, with a message that says
+  what to do about it.
+
+### Added
+- **The server now serves every exported level, not one map per process.**
+  `POST /path` accepts `levelId` and answers on that map; without it the active manifest
+  is used, so existing single-level clients are unaffected. When several exports of one
+  level are present, the newest wins. Levels are loaded lazily and cached.
+- **Hot reload.** The cache is keyed on the manifest timestamp, so re-running
+  *Export for Server* is picked up without restarting the server.
+- `GET /health` reports `dataDirectory`, `availableLevels` and a `message`, and accepts
+  `?level=<levelId>` to inspect a specific map. The Server tab shows which levels are
+  ready to serve, and warns instead of claiming OK when nothing is loaded.
+- New `--data <folder>` argument selects the artifact folder. `--manifest` still exists
+  and now means "pin this one map", which is what a dedicated instance wants.
+- `NavigationServerPathClient.RequestPath` has an overload taking `levelId`.
+
+### Changed
+- **Start server** no longer refuses to launch when no artifact has been exported, and
+  passes `--data` instead of `--manifest` so the running server can serve every level.
+
 ## [0.4.1] - 2026-08-07
 
 ### Fixed

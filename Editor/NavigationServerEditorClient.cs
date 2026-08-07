@@ -175,6 +175,15 @@ namespace CustomNavigation.Editor
             public string levelId;
             public string description;
             public string artifactHash;
+
+            /// <summary>Set when <see cref="status"/> is not "ok": says what to do about it.</summary>
+            public string message;
+
+            /// <summary>Folder the server serves artifacts from.</summary>
+            public string dataDirectory;
+
+            /// <summary>Every level the server can path on right now.</summary>
+            public string[] availableLevels;
         }
 
         public static bool TryParse<T>(string json, out T value) where T : class

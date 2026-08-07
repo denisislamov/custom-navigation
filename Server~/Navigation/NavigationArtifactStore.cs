@@ -75,7 +75,11 @@ public static class NavigationArtifactStore
             polygonCount);
     }
 
-    public static string ResolveManifestPath(string[] args)
+    /// <summary>
+    /// Manifest pinned with <c>--manifest</c>, or null to let the registry pick the
+    /// active one. Pinning is for serving one specific map, e.g. a dedicated instance.
+    /// </summary>
+    public static string? ResolvePinnedManifestPath(string[] args)
     {
         for (int i = 0; i < args.Length; i++)
         {
@@ -92,13 +96,39 @@ public static class NavigationArtifactStore
             return Path.GetFullPath(args[i + 1]);
         }
 
+        return null;
+    }
+
+    /// <summary>Folder the server serves artifacts from: <c>--data</c>, else NavigationData.</summary>
+    public static string ResolveDataDirectory(string[] args)
+    {
+        for (int i = 0; i < args.Length; i++)
+        {
+            if (!string.Equals(args[i], "--data", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (i + 1 >= args.Length || string.IsNullOrWhiteSpace(args[i + 1]))
+            {
+                throw new ArgumentException("--data requires a folder path.");
+            }
+
+            return Path.GetFullPath(args[i + 1]);
+        }
+
+        string? pinned = ResolvePinnedManifestPath(args);
+        if (pinned is not null)
+        {
+            return Path.GetDirectoryName(pinned) ?? AppContext.BaseDirectory;
+        }
+
         return Path.GetFullPath(Path.Combine(
             AppContext.BaseDirectory,
             "..",
             "..",
             "..",
-            "NavigationData",
-            "active.manifest.json"));
+            "NavigationData"));
     }
 
     /// <summary>
@@ -107,15 +137,17 @@ public static class NavigationArtifactStore
     /// </summary>
     public static ArtifactsResponse ListArtifacts(
         string dataDirectory,
-        ServerNavigation loadedNavigation,
+        ServerNavigation? loadedNavigation,
         JsonSerializerOptions jsonOptions)
     {
         var artifacts = new List<ServerArtifactDto>();
+        string loadedLevelId = loadedNavigation?.LevelId ?? string.Empty;
+        string loadedHash = loadedNavigation?.ArtifactHash ?? string.Empty;
         if (!Directory.Exists(dataDirectory))
         {
             return new ArtifactsResponse(
-                loadedNavigation.LevelId,
-                loadedNavigation.ArtifactHash,
+                loadedLevelId,
+                loadedHash,
                 dataDirectory,
                 artifacts);
         }
@@ -135,12 +167,12 @@ public static class NavigationArtifactStore
 
         foreach (string manifestPath in manifestPaths)
         {
-            artifacts.Add(Describe(manifestPath, dataDirectory, activeHash, loadedNavigation, jsonOptions));
+            artifacts.Add(Describe(manifestPath, dataDirectory, activeHash, loadedHash, jsonOptions));
         }
 
         return new ArtifactsResponse(
-            loadedNavigation.LevelId,
-            loadedNavigation.ArtifactHash,
+            loadedLevelId,
+            loadedHash,
             dataDirectory,
             artifacts);
     }
@@ -149,7 +181,7 @@ public static class NavigationArtifactStore
         string manifestPath,
         string dataDirectory,
         string activeHash,
-        ServerNavigation loadedNavigation,
+        string loadedHash,
         JsonSerializerOptions jsonOptions)
     {
         try
@@ -183,7 +215,7 @@ public static class NavigationArtifactStore
                 dataPresent,
                 hashMatches,
                 string.Equals(manifest.ArtifactHash, activeHash, StringComparison.OrdinalIgnoreCase),
-                string.Equals(manifest.ArtifactHash, loadedNavigation.ArtifactHash, StringComparison.OrdinalIgnoreCase),
+                string.Equals(manifest.ArtifactHash, loadedHash, StringComparison.OrdinalIgnoreCase),
                 string.Empty);
         }
         catch (Exception exception)

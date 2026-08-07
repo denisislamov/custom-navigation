@@ -1851,10 +1851,25 @@ namespace CustomNavigation.Editor
                              payload,
                              out NavigationServerEditorClient.HealthResponse health))
                 {
-                    serverStatusMessage =
-                        $"OK: level={health.levelId}, artifact={NavigationArtifactIndex.Short(health.artifactHash)}, " +
-                        $"polygons={health.navigationPolygons}, DotRecast {health.dotRecastVersion}.";
-                    serverStatusType = MessageType.Info;
+                    if (!string.Equals(health.status, "ok", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // The server is up but has nothing to serve - a normal state
+                        // before the first export, and its message says what to do.
+                        serverStatusMessage =
+                            $"Server is running, but no navigation is loaded.\n{health.message}";
+                        serverStatusType = MessageType.Warning;
+                    }
+                    else
+                    {
+                        string levels = health.availableLevels != null && health.availableLevels.Length > 0
+                            ? string.Join(", ", health.availableLevels)
+                            : health.levelId;
+                        serverStatusMessage =
+                            $"OK: level={health.levelId}, artifact={NavigationArtifactIndex.Short(health.artifactHash)}, " +
+                            $"polygons={health.navigationPolygons}, DotRecast {health.dotRecastVersion}.\n" +
+                            $"Levels ready to serve: {levels}.";
+                        serverStatusType = MessageType.Info;
+                    }
                 }
                 else
                 {

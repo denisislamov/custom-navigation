@@ -268,26 +268,17 @@ namespace CustomNavigation.Editor
             NavigationServerSettings settings = NavigationServerSettings.LoadOrNull();
             string listen = settings != null ? settings.ListenPrefix : "http://127.0.0.1:5079/";
 
-            // The server reads whatever folder the settings asset points at, which is not
-            // necessarily the one next to the installed project - pass it explicitly so
-            // "Export for Server" and "Start server" can never disagree.
-            string manifest = Path.Combine(
-                NavigationArtifactBuilder.ResolveServerFolder(),
-                NavigationArtifactBuilder.ActiveManifestFileName);
-
-            if (!File.Exists(manifest))
-            {
-                error =
-                    $"No active navigation artifact at '{manifest}'. " +
-                    "Build a level and use 'Export for Server' before starting the server.";
-                return false;
-            }
+            // Point the server at the folder, not at a single manifest: it serves every
+            // exported level from there and picks up new ones without a restart. Starting
+            // before the first export is fine - the server reports that over /health.
+            string dataFolder = NavigationArtifactBuilder.ResolveServerFolder();
+            Directory.CreateDirectory(dataFolder);
 
             var startInfo = new ProcessStartInfo("dotnet")
             {
                 Arguments =
                     $"run --project \"{NavigationServerInstaller.ProjectFilePath}\" " +
-                    $"--configuration Release -- --listen \"{listen}\" --manifest \"{manifest}\"",
+                    $"--configuration Release -- --listen \"{listen}\" --data \"{dataFolder}\"",
                 WorkingDirectory = NavigationServerInstaller.InstallPath,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -546,6 +537,7 @@ namespace CustomNavigation.Editor
         }
     }
 }
+
 
 
 

@@ -6,6 +6,12 @@ public sealed class PathRequest
 {
     public string? RequestId { get; init; }
 
+    /// <summary>
+    /// Which map to path on. Empty means "the active one", which keeps every
+    /// single-level project and every older client working unchanged.
+    /// </summary>
+    public string? LevelId { get; init; }
+
     public Vector3Dto? Start { get; init; }
 
     public Vector3Dto? Destination { get; init; }
@@ -30,7 +36,10 @@ public sealed record HealthResponse(
     int NavigationPolygons,
     string LevelId,
     string Description,
-    string ArtifactHash);
+    string ArtifactHash,
+    string Message = "",
+    string DataDirectory = "",
+    IReadOnlyList<string>? AvailableLevels = null);
 
 /// <summary>A single navmesh stored in the server NavigationData folder.</summary>
 public sealed record ServerArtifactDto(

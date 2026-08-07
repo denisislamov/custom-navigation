@@ -14,10 +14,9 @@ var jsonOptions = new JsonSerializerOptions
 };
 
 Console.WriteLine("[startup] Loading the exported DotRecast artifact...");
-string manifestPath = NavigationArtifactStore.ResolveManifestPath(args);
-ServerNavigation navigation = NavigationArtifactStore.Load(manifestPath, jsonOptions);
-string navigationDataDirectory = Path.GetDirectoryName(Path.GetFullPath(manifestPath))
-                                 ?? AppContext.BaseDirectory;
+string navigationDataDirectory = NavigationArtifactStore.ResolveDataDirectory(args);
+string? pinnedManifest = NavigationArtifactStore.ResolvePinnedManifestPath(args);
+var registry = new NavigationRegistry(navigationDataDirectory, pinnedManifest, jsonOptions);
 string listenPrefix = ResolveListenPrefix(args);
 
 using var listener = new HttpListener();
@@ -32,10 +31,24 @@ Console.CancelKeyPress += (_, eventArgs) =>
     listener.Stop();
 };
 
-Console.WriteLine(
-    $"[ready] DotRecast 2026.1.3, level={navigation.LevelId}, " +
-    $"artifact={navigation.ArtifactHash}, {navigation.PolygonCount} polygons, " +
-    $"listening on {listenPrefix}");
+// A missing artifact is a normal first-run state, not a fatal error: the server has to
+// be running before Unity can export to it. It reports the problem over /health and
+// picks the artifact up on the next request, without a restart.
+if (registry.TryResolve(null, out ServerNavigation? startupNavigation, out string startupError)
+    && startupNavigation is not null)
+{
+    Console.WriteLine(
+        $"[ready] DotRecast 2026.1.3, level={startupNavigation.LevelId}, " +
+        $"artifact={startupNavigation.ArtifactHash}, {startupNavigation.PolygonCount} polygons, " +
+        $"listening on {listenPrefix}");
+}
+else
+{
+    Console.WriteLine($"[waiting] {startupError}");
+    Console.WriteLine(
+        $"[ready] DotRecast 2026.1.3, no artifact loaded yet, data={navigationDataDirectory}, " +
+        $"listening on {listenPrefix}");
+}
 
 try
 {
@@ -55,7 +68,7 @@ try
             break;
         }
 
-        await HandleRequest(context, navigation, navigationDataDirectory, jsonOptions);
+        await HandleRequest(context, registry, jsonOptions);
     }
 }
 finally
@@ -68,8 +81,7 @@ finally
 
 static async Task HandleRequest(
     HttpListenerContext context,
-    ServerNavigation navigation,
-    string navigationDataDirectory,
+    NavigationRegistry registry,
     JsonSerializerOptions jsonOptions)
 {
     HttpListenerRequest request = context.Request;
@@ -89,16 +101,35 @@ static async Task HandleRequest(
         string path = request.Url?.AbsolutePath ?? string.Empty;
         if (request.HttpMethod == "GET" && path == "/health")
         {
+            bool resolved = registry.TryResolve(
+                request.QueryString["level"],
+                out ServerNavigation? navigation,
+                out string healthError);
+
             await WriteJson(
                 response,
                 HttpStatusCode.OK,
-                new HealthResponse(
-                    "ok",
-                    "2026.1.3",
-                    navigation.PolygonCount,
-                    navigation.LevelId,
-                    navigation.Description,
-                    navigation.ArtifactHash),
+                resolved && navigation is not null
+                    ? new HealthResponse(
+                        "ok",
+                        "2026.1.3",
+                        navigation.PolygonCount,
+                        navigation.LevelId,
+                        navigation.Description,
+                        navigation.ArtifactHash,
+                        string.Empty,
+                        registry.DataDirectory,
+                        registry.AvailableLevelIds())
+                    : new HealthResponse(
+                        "no-artifact",
+                        "2026.1.3",
+                        0,
+                        string.Empty,
+                        string.Empty,
+                        string.Empty,
+                        healthError,
+                        registry.DataDirectory,
+                        registry.AvailableLevelIds()),
                 jsonOptions);
             return;
         }
@@ -108,7 +139,10 @@ static async Task HandleRequest(
             await WriteJson(
                 response,
                 HttpStatusCode.OK,
-                NavigationArtifactStore.ListArtifacts(navigationDataDirectory, navigation, jsonOptions),
+                NavigationArtifactStore.ListArtifacts(
+                    registry.DataDirectory,
+                    registry.TryGetActive(),
+                    jsonOptions),
                 jsonOptions);
             return;
         }
@@ -132,7 +166,7 @@ static async Task HandleRequest(
                         Array.Empty<Vector3Dto>(),
                         "Invalid JSON: " + exception.Message,
                         "invalid",
-                        navigation.ArtifactHash,
+                        string.Empty,
                         string.Empty,
                         false),
                     jsonOptions);
@@ -149,7 +183,7 @@ static async Task HandleRequest(
                         Array.Empty<Vector3Dto>(),
                         "Both start and destination are required.",
                         pathRequest?.RequestId ?? "invalid",
-                        navigation.ArtifactHash,
+                        string.Empty,
                         string.Empty,
                         false),
                     jsonOptions);
@@ -160,9 +194,37 @@ static async Task HandleRequest(
             string requestId = string.IsNullOrWhiteSpace(pathRequest.RequestId)
                 ? sequence.ToString(CultureInfo.InvariantCulture)
                 : pathRequest.RequestId;
+
+            if (!registry.TryResolve(
+                    pathRequest.LevelId,
+                    out ServerNavigation? navigation,
+                    out string resolveError)
+                || navigation is null)
+            {
+                Console.WriteLine(
+                    $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [path {requestId}] rejected: {resolveError}");
+
+                // Deliberately 200 with success=false: the Unity client surfaces the
+                // message only for a successful HTTP exchange, and this message is the
+                // actionable part ("export from Unity first").
+                await WriteJson(
+                    response,
+                    HttpStatusCode.OK,
+                    new PathResponse(
+                        false,
+                        Array.Empty<Vector3Dto>(),
+                        resolveError,
+                        requestId,
+                        string.Empty,
+                        string.Empty,
+                        false),
+                    jsonOptions);
+                return;
+            }
+
             Console.WriteLine(
                 $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [path {requestId}] " +
-                $"input start={FormatPoint(pathRequest.Start)}, " +
+                $"input level={navigation.LevelId}, start={FormatPoint(pathRequest.Start)}, " +
                 $"destination={FormatPoint(pathRequest.Destination)}, " +
                 $"clientArtifact={pathRequest.ClientArtifactHash ?? "none"}, " +
                 $"clientPath={pathRequest.ClientPathFingerprint ?? "none"}");

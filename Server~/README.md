@@ -12,16 +12,36 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 Один и тот же бинарный navmesh будет записан в:
 
 - `Assets/CustomNavigation/Generated/Navigation` для локального клиента;
-- `DotRecastServer/NavigationData` для сервера.
+- `NavigationServer/NavigationData` для сервера.
 
-`NavigationData/active.manifest.json` указывает на активный уровень. При старте сервер проверяет schema version, DotRecast version, SHA-256 artifact и число полигонов, затем загружает его через `DtMeshSetReader`.
+## Какую карту сервер отдаёт на запрос
+
+Сервер держит **все** экспортированные карты из своей папки `NavigationData` и выбирает
+нужную для каждого запроса:
+
+1. Если в теле `POST /path` задан `levelId` — берётся карта с таким `levelId` из манифеста.
+   Если для одного уровня накопилось несколько экспортов (`<level>.<hash>.manifest.json`),
+   выбирается самый свежий по времени записи.
+2. Если `levelId` не задан — берётся `active.manifest.json`. Его перезаписывает каждый
+   `Export for Server`, поэтому «активной» становится последняя выгруженная карта.
+   Это поведение по умолчанию для игры с одним уровнем.
+3. Если `active.manifest.json` нет, но экспортирована ровно одна карта — берётся она.
+
+Карты загружаются лениво и кэшируются. Кэш сбрасывается по времени изменения манифеста,
+поэтому после повторного `Export for Server` сервер подхватывает новые данные **без
+перезапуска**. При загрузке проверяются schema version, DotRecast version, SHA-256
+artifact и число полигонов.
+
+Отсутствие артефактов — не ошибка: сервер стартует, слушает порт и сообщает об этом в
+`GET /health` (`status: "no-artifact"`) и в ответе `POST /path`. Это нужно, чтобы можно
+было поднять сервер до первого экспорта из Unity.
 
 ## Запуск
 
 Из корня Unity-проекта:
 
 ```bash
-./DotRecastServer/run-server.sh
+./NavigationServer/run-server.sh
 ```
 
 По умолчанию сервис слушает только `127.0.0.1:5079`. Остановить его можно через `Ctrl+C`.
@@ -29,7 +49,7 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 Для клиента на телефоне в той же Wi-Fi сети запустите сервер на всех сетевых интерфейсах:
 
 ```bash
-./DotRecastServer/run-server.sh --listen 'http://*:5079/'
+./NavigationServer/run-server.sh --listen 'http://*:5079/'
 ```
 
 В стартовом уровне Unity введите адрес компьютера, например
@@ -38,17 +58,20 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 входящие соединения для `dotnet` в firewall и убедитесь, что Wi-Fi не использует
 client/AP isolation.
 
-Другой manifest можно выбрать явно:
+Аргументы:
 
-```bash
-./DotRecastServer/run-server.sh \
-  --listen 'http://*:5079/' \
-  --manifest DotRecastServer/NavigationData/active.manifest.json
-```
+| Аргумент | Значение |
+|---|---|
+| `--listen <prefix>` | HTTP prefix, например `http://*:5079/`. По умолчанию `http://127.0.0.1:5079/`. |
+| `--data <folder>` | Папка с артефактами. По умолчанию `NavigationData` рядом с проектом сервера. |
+| `--manifest <path>` | Жёстко закрепить одну карту: она становится ответом по умолчанию вместо `active.manifest.json`. Полезно для выделенного инстанса на конкретный уровень. |
 
 ## API
 
-- `GET /health` — status, версия DotRecast, `levelId`, описание уровня, artifact hash и число полигонов.
+- `GET /health` — status, версия DotRecast, `levelId`, описание уровня, artifact hash,
+  число полигонов, папка данных и список доступных уровней (`availableLevels`).
+  Можно спросить про конкретную карту: `GET /health?level=<levelId>`.
+- `GET /artifacts` — все карты в папке данных с их состоянием.
 - `POST /path` — авторитетный Detour path query.
 
 Сервер не передаёт и не генерирует presentation geometry. Игровая геометрия сохранена в Unity-сцене, а сервер загружает готовый navmesh artifact, экспортированный из тех же `NavigationGeometrySource`.
@@ -60,12 +83,15 @@ curl -X POST http://127.0.0.1:5079/path \
   -H 'Content-Type: application/json' \
   -d '{
     "requestId":"manual-1",
+    "levelId":"local_bots_arena",
     "start":{"x":-11,"y":0,"z":-7},
     "destination":{"x":11,"y":0,"z":7},
     "clientArtifactHash":"e35d4eaaa6febf09e2f39359c2b98290503c4bd4d739e8ae94f74aceceff18d0",
     "clientPathFingerprint":"optional-local-path-sha256"
   }'
 ```
+
+`levelId` можно не указывать — тогда ответит активная карта.
 
 Для каждого запроса сервер пишет в console:
 
