@@ -4,6 +4,19 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2026-08-07
+
+### Fixed
+- **The DotRecast assemblies were shipped as Git LFS pointers**, which was the real
+  cause of `CS0246: The type or namespace name 'DotRecast' could not be found` for
+  anyone installing from a git URL. The source repository tracks `*.dll` with Git
+  LFS, and Unity Package Manager clones a git package **without LFS support**, so
+  each DLL arrived as a ~130-byte text stub instead of a 76-108 KB assembly.
+  The package now carries its own `.gitattributes` that opts every binary out of
+  LFS, so the assemblies travel as plain git blobs.
+- `tools/publish-package.sh` inspects the blobs it is about to push and refuses to
+  publish if any binary is still an LFS pointer.
+
 ## [0.3.2] - 2026-08-07
 
 ### Fixed

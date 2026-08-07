@@ -1,0 +1,21 @@
+# This package is published to a standalone repository and installed through
+# Unity Package Manager via a git URL. UPM clones that repository WITHOUT Git LFS
+# support, so any LFS-tracked file arrives as a ~130-byte text pointer instead of
+# the real content. For the DotRecast assemblies that means the managed plugins
+# never load and every script referencing them fails with CS0246.
+#
+# Therefore nothing inside this package may be handed to LFS: store binaries as
+# plain git blobs (they are small - roughly 270 KB in total).
+
+*.dll -filter -diff -merge binary
+*.so  -filter -diff -merge binary
+*.dylib -filter -diff -merge binary
+*.bytes -filter -diff -merge binary
+
+# Keep Unity text assets as text with stable line endings.
+*.cs      text eol=lf
+*.asmdef  text eol=lf
+*.json    text eol=lf
+*.meta    text eol=lf
+*.md      text eol=lf
+
