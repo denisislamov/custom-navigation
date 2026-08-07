@@ -4,6 +4,18 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-08-07
+
+### Changed
+- The default `Server Artifact Folder` is now `NavigationServer/NavigationData` - the
+  folder the installed server actually reads - instead of the legacy
+  `DotRecastServer/NavigationData`, which was the server's location in the source
+  repository before it moved into the package as `Server~` (v0.2.0). A freshly created
+  settings asset used to point at a folder no consumer project ever had, and *Export to
+  Folder* would write where nothing reads. Explicitly configured folders are untouched.
+- The "Copy the launch command" snippet and the docs now reference
+  `NavigationServer/run-server.sh` instead of the legacy path.
+
 ## [0.6.0] - 2026-08-07
 
 ### Added

@@ -103,7 +103,8 @@ namespace CustomNavigation.Editor
         public const string DotRecastVersion = "2026.1.3";
         public const string GeneratedClientFolder = "Assets/CustomNavigation/Generated/Navigation";
         public const string ActiveManifestFileName = "active.manifest.json";
-        public const string DefaultServerArtifactFolder = "DotRecastServer/NavigationData";
+        public const string DefaultServerArtifactFolder =
+            NavigationServerSettings.DefaultServerArtifactFolder;
         private const int WalkableFlag = 1;
 
         [MenuItem("Tools/Custom Navigation/Diagnostics/Artifact Roundtrip Test", priority = 200)]

@@ -128,7 +128,7 @@ namespace CustomNavigation.Editor
 
             // The standalone navigation server only exists in the source repository;
             // consumer projects install just the Unity package.
-            string serverRoot = Path.Combine(projectRoot, "DotRecastServer");
+            string serverRoot = Path.Combine(projectRoot, "NavigationServer");
             if (Directory.Exists(serverRoot))
             {
                 sourceRoots.Add(serverRoot);

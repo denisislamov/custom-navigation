@@ -20,6 +20,14 @@ namespace CustomNavigation.Authoring
         public const string DefaultHost = "127.0.0.1";
         public const int DefaultPort = 5079;
 
+        /// <summary>
+        /// Matches where "Install navigation server" puts the server, so the default
+        /// works without touching anything. Uploading over HTTP does not use this at
+        /// all - it only matters for Export to Folder and for the fallback comparison
+        /// in the Artifacts tab.
+        /// </summary>
+        public const string DefaultServerArtifactFolder = "NavigationServer/NavigationData";
+
         private static NavigationServerSettings cachedInstance;
 
         [SerializeField, Tooltip("IP or hostname of the machine running DotRecastServer.")]
@@ -30,18 +38,18 @@ namespace CustomNavigation.Authoring
         private bool useHttps;
         [SerializeField, Range(1, 60), Tooltip("Timeout for HTTP requests to the navigation server, in seconds.")]
         private int requestTimeoutSeconds = 5;
-        [SerializeField, Tooltip("Relative path of the folder the Navigation Editor uploads server artifacts to.")]
-        private string serverArtifactFolder = "DotRecastServer/NavigationData";
+        [SerializeField, Tooltip("Relative path of the folder Export to Folder writes server artifacts to.")]
+        private string serverArtifactFolder = DefaultServerArtifactFolder;
         [SerializeField, TextArea(2, 6), Tooltip("Note for the team: where the server runs and who owns it.")]
         private string notes = "Navigation artifacts are baked offline in Unity (Navigation -> Build for Client) " +
-                              "and uploaded to the server with the Export for Server button.";
+                              "and pushed to the server with the Upload to Server button.";
 
         public string Host => host;
         public int Port => port;
         public bool UseHttps => useHttps;
         public int RequestTimeoutSeconds => Mathf.Clamp(requestTimeoutSeconds, 1, 60);
         public string ServerArtifactFolder => string.IsNullOrWhiteSpace(serverArtifactFolder)
-            ? "DotRecastServer/NavigationData"
+            ? DefaultServerArtifactFolder
             : serverArtifactFolder.Trim().Replace('\\', '/');
         public string Notes => notes;
 

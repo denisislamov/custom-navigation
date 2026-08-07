@@ -609,7 +609,8 @@ namespace CustomNavigation.Editor
         {
             NavigationServerSettings settings = NavigationServerSettings.LoadOrNull();
             string prefix = settings != null ? settings.ListenPrefix : "http://127.0.0.1:5079/";
-            return $"./DotRecastServer/run-server.sh --listen '{prefix}' --manifest '{manifestPath}'";
+            return $"./{NavigationServerInstaller.InstallFolderName}/run-server.sh " +
+                   $"--listen '{prefix}' --manifest '{manifestPath}'";
         }
 
         private void VerifyServerAfterExport(string expectedHash)
