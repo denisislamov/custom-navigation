@@ -4,7 +4,7 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 2026-08-07
+## [0.3.2] - 2026-08-07
 
 ### Fixed
 - **Package installed from a git URL failed to compile** (`CS0246: The type or
@@ -18,7 +18,19 @@ All notable changes to this package are documented here. The format is based on
 - `DotRecast.Recast.dll` is now marked editor-only - the runtime never bakes, it
   only loads a prebuilt navmesh - which also keeps it out of player builds.
 
-## [0.2.0] - 2026-08-07
+### Notes
+- `package.json` had drifted behind the published tags (it still said `0.1.0` at
+  `v0.3.0`/`v0.3.1`). The manifest version now matches the tag again, and
+  `tools/publish-package.sh` verifies that before every release.
+- Tags `v0.1.1`, `v0.2.0` and `v0.2.1` were mis-numbered duplicates of this line and
+  have been removed; use `v0.1.0` → `v0.3.0` → `v0.3.1` → `v0.3.2`.
+
+## [0.3.1] - 2026-08-07
+
+### Changed
+- Cosmetic cleanup of `LICENSE.md`.
+
+## [0.3.0] - 2026-08-07
 
 ### Added
 - Standalone .NET 9 navigation server sources (`Server~`) — the reference
