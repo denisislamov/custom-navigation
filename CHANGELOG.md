@@ -4,6 +4,22 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-08-07
+
+### Fixed
+- **The demo scenes rendered nothing in Play mode** ("Display 1 - No cameras rendering",
+  no player, no bots, no path lines). `NavigationDemoIsometricCameraRig` is a
+  `MonoBehaviour`, but it was declared inside `NavigationDemoPresentation.cs`. Unity
+  only creates a `MonoScript` for the type whose name matches the file name, so
+  `AddComponent<NavigationDemoIsometricCameraRig>()` returned `null`, logged
+  "The referenced script (Unknown) on this Behaviour is missing!" and the very next
+  field assignment threw a `NullReferenceException` - which aborted `Start()` before
+  the camera, the agents and the materials were created. Every demo except the hub
+  builds its camera through that rig, so all of them came up empty.
+  The rig now lives in `NavigationDemoIsometricCameraRig.cs`.
+- `NavigationDemoHubReturn` had the same defect (declared in `NavigationDemoHub.cs`),
+  which broke the "Back to the level catalog" overlay. Moved to its own file.
+
 ## [0.4.0] - 2026-08-07
 
 ### Added
