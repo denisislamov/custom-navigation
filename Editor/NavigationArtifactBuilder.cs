@@ -460,7 +460,13 @@ namespace CustomNavigation.Editor
                 setAsActive);
         }
 
-        /// <summary>Client build plus server upload in one operation. Used by the demo scene builders.</summary>
+        /// <summary>
+        /// Client build plus server export in one operation.
+        /// Writes into the server NavigationData folder and therefore creates it on disk,
+        /// so call this only from explicit user actions (never from importers or
+        /// <c>[InitializeOnLoadMethod]</c> hooks). LocalOnly flows should use
+        /// <see cref="BuildForClient(NavigationLevel)"/> instead.
+        /// </summary>
         public static NavigationArtifactBuildResult BuildAndExport(NavigationLevel level)
         {
             NavigationArtifactBuildResult result = BuildForClient(level);

@@ -160,7 +160,8 @@ namespace CustomNavigation.Editor
 
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
-            NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildAndExport(level);
+            // LocalOnly demo: client artifact only, no server export (see LocalBotsDemoSceneBuilder).
+            NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildForClient(level);
             scheduler.Configure(artifact.Asset, performance, agent);
             demo.Configure(
                 scheduler,

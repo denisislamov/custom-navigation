@@ -4,6 +4,25 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3] - 2026-08-09
+
+### Fixed
+- **Importing the samples no longer creates a `NavigationServer/NavigationData` folder
+  next to `Assets`.** The LocalOnly sample scene builders (`LocalBotsDemoSceneBuilder`,
+  `MultiLevelDemoSceneBuilder`) called `NavigationArtifactBuilder.BuildAndExport`, which
+  writes the baked artifact and `active.manifest.json` into the server data folder.
+  Because those builders run from `[InitializeOnLoadMethod]` right after import, a fresh
+  project got a server folder populated with `local_bots_arena` data even when no server
+  was installed and no server demo was ever opened. Both builders now call
+  `BuildForClient`, so they only produce the client artifact under
+  `Assets/CustomNavigation/Generated/Navigation`.
+  The server folder is created only by explicit user actions: *Server → Install*,
+  *Export to Folder* and *Upload to Server* in the Navigation Editor.
+
+### Changed
+- `NavigationArtifactBuilder.BuildAndExport` is documented as an explicit user action
+  and must not be called from importers or `[InitializeOnLoadMethod]` hooks.
+
 ## [0.6.2] - 2026-08-08
 
 ### Changed
