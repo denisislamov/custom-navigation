@@ -4,6 +4,33 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.4] - 2026-08-10
+
+### Added
+- **`Server~/ONBOARDING.md` — developer onboarding for the navigation server.** The
+  server shipped with usage docs only (`Server~/README.md`), so anyone who had to change
+  its code had to reverse-engineer the module layout, the request/response contracts and
+  the artifact rules from the sources. The new document covers the process lifecycle and
+  CLI arguments, the full HTTP contract with JSON schemas and status codes, how
+  `NavigationRegistry` picks a map and hot-reloads it, artifact validation and upload
+  authorization, the determinism pitfalls between client and server (hard-coded
+  `searchExtents (2, 4, 2)`, the 256/256 path limits and `DtQueryDefaultFilter`, none of
+  which match the client), known limitations and a checklist of gotchas.
+  It is installed together with the server, so it also lands in
+  `<project>/NavigationServer` next to the code it describes.
+
+### Fixed
+- **`Server~/README.md` no longer contains a pasted stack trace.** The section explaining
+  that a missing artifact is a normal first-run state had a `FileNotFoundException` dump
+  (twice) spliced into the middle of a sentence, which described behaviour the server has
+  not had since artifacts became lazily resolved in 0.5.0.
+
+### Changed
+- The package README points at both server documents and says what each is for.
+
+> Note: 0.6.3 was never published to the package repository, so consumers move straight
+> from 0.6.2 to 0.6.4 and pick up the 0.6.3 fix listed below.
+
 ## [0.6.3] - 2026-08-09
 
 ### Fixed
