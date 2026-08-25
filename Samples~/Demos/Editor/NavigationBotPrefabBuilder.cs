@@ -15,7 +15,7 @@ namespace CustomNavigation.Editor
     /// </summary>
     public static class NavigationBotPrefabBuilder
     {
-        private const string OutputFolder = "Assets/CustomNavigation/Generated/BotAgent";
+        private const string OutputFolder = "Assets/DataSakura/CustomNavigation/Generated/BotAgent";
         private const string PrefabPath = OutputFolder + "/NavigationBotAgent.prefab";
         private const string RoutePrefabPath = OutputFolder + "/NavigationWaypointRoute.prefab";
         private const string MaterialPath = OutputFolder + "/BotAgent.mat";

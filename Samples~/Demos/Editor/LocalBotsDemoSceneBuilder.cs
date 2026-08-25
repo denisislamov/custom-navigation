@@ -11,9 +11,9 @@ namespace CustomNavigation.Editor
 {
     public static class LocalBotsDemoSceneBuilder
     {
-        public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastLocalBots.unity";
+        public const string ScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastLocalBots.unity";
 
-        private const string DemoFolder = "Assets/CustomNavigation/Generated/LocalBotsDemo";
+        private const string DemoFolder = "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo";
         private const string AgentPath = DemoFolder + "/LocalBots_Agent.asset";
         private const string AreasPath = DemoFolder + "/LocalBots_Areas.asset";
         private const string PerformancePath = DemoFolder + "/LocalBots_MobilePerformance.asset";
@@ -112,7 +112,7 @@ namespace CustomNavigation.Editor
             // LocalOnly demo: client artifact only. Do not export to the server NavigationData
             // folder here, otherwise importing the samples silently creates NavigationServer/
             // outside Assets even when no server is installed.
-            NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildForClient(level);
+            NavigationBakeResult artifact = NavigationBakeCommand.Execute(level);
             scheduler.Configure(artifact.Asset, performance, agent);
             demo.Configure(scheduler, FloorSize, 24, PlayerStart);
             EditorUtility.SetDirty(scheduler);

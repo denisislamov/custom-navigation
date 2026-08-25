@@ -12,7 +12,7 @@ namespace CustomNavigation.Authoring
         menuName = "Custom Navigation/Server Settings")]
     public sealed class NavigationServerSettings : ScriptableObject
     {
-        public const string ResourcesFolder = "Assets/CustomNavigation/Resources/CustomNavigation";
+        public const string ResourcesFolder = "Assets/DataSakura/CustomNavigation/Resources/CustomNavigation";
         public const string ResourceName = "NavigationServerSettings";
         public const string ResourcePath = "CustomNavigation/" + ResourceName;
         public const string AssetPath = ResourcesFolder + "/" + ResourceName + ".asset";

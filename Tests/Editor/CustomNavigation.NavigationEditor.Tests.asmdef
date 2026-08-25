@@ -1,0 +1,23 @@
+{
+  "name": "CustomNavigation.NavigationEditor.Tests",
+  "rootNamespace": "CustomNavigation.Editor.Tests",
+  "references": [
+    "CustomNavigation.NavigationEditor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}

@@ -12,21 +12,21 @@ namespace CustomNavigation.Editor
 {
     public static class DotRecastDemoSceneBuilder
     {
-        public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastTopDown.unity";
-        public const string ServerClientScenePath = "Assets/CustomNavigation/Scene/DotRecastServerClient.unity";
+        public const string ScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastTopDown.unity";
+        public const string ServerClientScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastServerClient.unity";
 
         private const string ArtifactPath =
-            "Assets/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset";
+            "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset";
         private const string AgentProfilePath =
-            "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset";
+            "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset";
         private const string PerformanceProfilePath =
-            "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_MobilePerformance.asset";
+            "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_MobilePerformance.asset";
         private const string AgentMeshPath =
-            "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Box.asset";
+            "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Box.asset";
         private const string AgentMaterialPath =
-            "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Obstacle.mat";
+            "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Obstacle.mat";
         private const string PathMaterialPath =
-            "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Floor.mat";
+            "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Floor.mat";
 
         private static readonly Vector2 ArenaSize = new Vector2(28f, 20f);
         private static readonly Vector3 AgentStart = new Vector3(-11f, 0f, -7f);

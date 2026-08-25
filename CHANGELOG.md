@@ -4,6 +4,26 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.6] - 2026-08-25
+
+### Changed
+- The package display name is now `DataSakura Custom Navigation`, so native samples import
+  under `Assets/Samples/DataSakura Custom Navigation/<version>`.
+- Generated assets and builder-created scenes now use
+  `Assets/DataSakura/CustomNavigation/{Generated,Scenes}`.
+- Added an explicit, idempotent GUID-preserving migration. It moves the legacy product root,
+  renames its `Scene` folder to `Scenes`, finishes that rename after an interrupted migration,
+  and refuses to merge conflicting roots or scene folders.
+
+## [0.6.5] - 2026-08-18
+
+### Added
+- Public editor facade `NavigationBakeCommand` with typed validation and build results.
+  Consumers can bake client navigation artifacts without reflection or access to the
+  package-internal `NavigationArtifactBuilder` implementation.
+- Server artifact loading now rejects rooted or traversing manifest file names before
+  reading the payload outside `NavigationData`.
+
 ## [0.6.4] - 2026-08-10
 
 ### Added
@@ -42,7 +62,7 @@ All notable changes to this package are documented here. The format is based on
   project got a server folder populated with `local_bots_arena` data even when no server
   was installed and no server demo was ever opened. Both builders now call
   `BuildForClient`, so they only produce the client artifact under
-  `Assets/CustomNavigation/Generated/Navigation`.
+  `Assets/DataSakura/CustomNavigation/Generated/Navigation`.
   The server folder is created only by explicit user actions: *Server → Install*,
   *Export to Folder* and *Upload to Server* in the Navigation Editor.
 
@@ -250,4 +270,3 @@ All notable changes to this package are documented here. The format is based on
   the package has no dependency on gameplay code.
 - `CustomNavigation.Runtime` no longer references `Unity.InputSystem` (input handling now
   belongs to the client assembly).
-

@@ -1,4 +1,4 @@
-# Custom Navigation
+# DataSakura Custom Navigation
 
 Physics-free navigation for Unity, built on top of [DotRecast](https://github.com/ikpil/DotRecast)
 (a C# port of Recast & Detour). The package provides everything needed to bake and
@@ -43,12 +43,12 @@ Or add it to `Packages/manifest.json` directly:
 Pin a specific version with a tag:
 
 ```json
-"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git#v0.1.0"
+"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git#v0.6.6"
 ```
 
 ## Sample: Navigation Demos & Bots
 
-Package Manager → Custom Navigation → **Samples** → *Navigation Demos & Bots* → Import.
+Package Manager → DataSakura Custom Navigation → **Samples** → *Navigation Demos & Bots* → Import.
 
 It contains `NavigationBotAgent`, `NavigationWaypointRoute`, demo presentation helpers
 and editor menu items that **generate** the demo scenes (local / server / hybrid /
@@ -58,12 +58,25 @@ multi-level), so no scene assets with fragile GUID references are shipped.
 > `com.unity.inputsystem` before importing, or remove that reference from
 > `CustomNavigation.Client.asmdef` after import.
 
+## Upgrading from 0.6.5 or earlier
+
+Run **Tools → Custom Navigation → Migrate pre-0.6.6 project folders** before rebuilding
+the demos. The explicit migration moves `Assets/CustomNavigation` to
+`Assets/DataSakura/CustomNavigation` and renames the builder-owned `Scene` folder to
+`Scenes` through `AssetDatabase.MoveAsset`, preserving Unity GUIDs. It is safe to run
+again. If both old and new roots (or both scene-folder spellings) exist, it reports the
+conflict and does not merge or overwrite them.
+
+Do not rename a previously imported sample version by hand. Import the current sample
+from Package Manager; Unity places it under
+`Assets/Samples/DataSakura Custom Navigation/<package-version>/Navigation Demos & Bots`.
+
 ## Runtime configuration
 
 `NavigationServerSettings` is loaded via
 `Resources.Load("CustomNavigation/NavigationServerSettings")`. To point the runtime at
 your navigation server, create the asset in **your project** at
-`Assets/Resources/CustomNavigation/NavigationServerSettings.asset`
+`Assets/DataSakura/CustomNavigation/Resources/CustomNavigation/NavigationServerSettings.asset`
 (Create → Custom Navigation → Server Settings). Without it, built-in defaults are used.
 
 ## The navigation server
@@ -124,5 +137,3 @@ baked artifacts survive a package update.
 
 DotRecast is distributed under the zlib license — see `Third Party Notices.md`.
 Package code is MIT — see `LICENSE.md`.
-
-

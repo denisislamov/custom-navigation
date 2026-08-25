@@ -86,8 +86,8 @@ namespace CustomNavigation.Editor
 
         /// <summary>
         /// Locates the folder with the client demo sources relative to this script, so the
-        /// check works both in the source repository (Assets/CustomNavigation/Client) and
-        /// after importing the package sample (Assets/Samples/Custom Navigation/...).
+        /// check works both in the source repository and after importing the package sample
+        /// (Assets/Samples/DataSakura Custom Navigation/...).
         /// </summary>
         private static string ResolveClientRoot()
         {
@@ -194,8 +194,8 @@ namespace CustomNavigation.Editor
                 NavigationDemoHubSceneBuilder.ScenePath,
                 DotRecastDemoSceneBuilder.ScenePath,
                 DotRecastDemoSceneBuilder.ServerClientScenePath,
-                "Assets/CustomNavigation/Scene/DotRecastLocalBots.unity",
-                "Assets/CustomNavigation/Scene/DotRecastHybridPredicted.unity",
+                "Assets/DataSakura/CustomNavigation/Scenes/DotRecastLocalBots.unity",
+                "Assets/DataSakura/CustomNavigation/Scenes/DotRecastHybridPredicted.unity",
                 MultiLevelDemoSceneBuilder.ScenePath
             };
 

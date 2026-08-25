@@ -11,9 +11,9 @@ namespace CustomNavigation.Editor
 {
     public static class MultiLevelDemoSceneBuilder
     {
-        public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastMultiLevel.unity";
+        public const string ScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastMultiLevel.unity";
 
-        private const string DemoFolder = "Assets/CustomNavigation/Generated/MultiLevelDemo";
+        private const string DemoFolder = "Assets/DataSakura/CustomNavigation/Generated/MultiLevelDemo";
         private const string AgentPath = DemoFolder + "/MultiLevel_Agent.asset";
         private const string AreasPath = DemoFolder + "/MultiLevel_Areas.asset";
         private const string PerformancePath = DemoFolder + "/MultiLevel_MobilePerformance.asset";
@@ -161,7 +161,7 @@ namespace CustomNavigation.Editor
             System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(ScenePath));
             EditorSceneManager.SaveScene(scene, ScenePath);
             // LocalOnly demo: client artifact only, no server export (see LocalBotsDemoSceneBuilder).
-            NavigationArtifactBuildResult artifact = NavigationArtifactBuilder.BuildForClient(level);
+            NavigationBakeResult artifact = NavigationBakeCommand.Execute(level);
             scheduler.Configure(artifact.Asset, performance, agent);
             demo.Configure(
                 scheduler,

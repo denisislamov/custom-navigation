@@ -28,7 +28,8 @@ public static class NavigationArtifactStore
 
         string directory = Path.GetDirectoryName(Path.GetFullPath(manifestPath))
                            ?? throw new InvalidOperationException("Cannot resolve manifest directory.");
-        string dataPath = Path.Combine(directory, manifest.FileName);
+        string fileName = RequirePlainArtifactFileName(manifest.FileName);
+        string dataPath = Path.Combine(directory, fileName);
         byte[] data = File.ReadAllBytes(dataPath);
         return Create(manifest, data, dataPath);
     }
@@ -201,6 +202,21 @@ public static class NavigationArtifactStore
             string.Empty,
             false,
             message);
+    }
+
+    private static string RequirePlainArtifactFileName(string value)
+    {
+        string fileName = Path.GetFileName(value);
+        if (string.IsNullOrWhiteSpace(value)
+            || !string.Equals(fileName, value, StringComparison.Ordinal)
+            || !fileName.EndsWith(".navmesh.bytes", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException(
+                $"Unexpected navigation artifact file name '{value}'. It must be a plain "
+                + "'<level>.<hash>.navmesh.bytes' name next to its manifest.");
+        }
+
+        return fileName;
     }
 
     /// <summary>

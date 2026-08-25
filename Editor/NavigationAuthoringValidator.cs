@@ -422,7 +422,7 @@ namespace CustomNavigation.Editor
     /// </summary>
     internal static class NavigationValidationFixes
     {
-        private const string GeneratedSettingsFolder = "Assets/CustomNavigation/Generated/Settings";
+        private const string GeneratedSettingsFolder = "Assets/DataSakura/CustomNavigation/Generated/Settings";
 
         public static void CreateAndAssignAgentProfile(NavigationLevel level)
         {

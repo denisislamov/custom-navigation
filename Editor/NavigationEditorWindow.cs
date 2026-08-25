@@ -29,7 +29,7 @@ namespace CustomNavigation.Editor
         private const int ServerTab = 4;
         private const int ArtifactsTab = 5;
 
-        private const string GeneratedSettingsFolder = "Assets/CustomNavigation/Generated/Settings";
+        private const string GeneratedSettingsFolder = "Assets/DataSakura/CustomNavigation/Generated/Settings";
 
         [SerializeField] private NavigationLevel selectedLevel;
         [SerializeField] private int selectedTab;

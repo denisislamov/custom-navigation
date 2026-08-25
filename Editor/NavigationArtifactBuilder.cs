@@ -101,7 +101,7 @@ namespace CustomNavigation.Editor
     {
         public const string SchemaVersion = "1";
         public const string DotRecastVersion = "2026.1.3";
-        public const string GeneratedClientFolder = "Assets/CustomNavigation/Generated/Navigation";
+        public const string GeneratedClientFolder = "Assets/DataSakura/CustomNavigation/Generated/Navigation";
         public const string ActiveManifestFileName = "active.manifest.json";
         public const string DefaultServerArtifactFolder =
             NavigationServerSettings.DefaultServerArtifactFolder;

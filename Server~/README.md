@@ -14,7 +14,7 @@ Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. �
 
 Один и тот же бинарный navmesh будет записан в:
 
-- `Assets/CustomNavigation/Generated/Navigation` для локального клиента;
+- `Assets/DataSakura/CustomNavigation/Generated/Navigation` для локального клиента;
 - `NavigationServer/NavigationData` для сервера.
 
 ## Как доставить артефакт на сервер

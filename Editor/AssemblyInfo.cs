@@ -6,3 +6,4 @@ using System.Runtime.CompilerServices;
 // public API surface of the package.
 [assembly: InternalsVisibleTo("CustomNavigation.Client.Editor")]
 
+[assembly: InternalsVisibleTo("CustomNavigation.NavigationEditor.Tests")]

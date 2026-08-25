@@ -8,7 +8,7 @@ namespace CustomNavigation.Editor
     [CustomEditor(typeof(NavigationLevel))]
     public sealed class NavigationLevelEditor : UnityEditor.Editor
     {
-        private const string GeneratedSettingsFolder = "Assets/CustomNavigation/Generated/Settings";
+        private const string GeneratedSettingsFolder = "Assets/DataSakura/CustomNavigation/Generated/Settings";
 
         private string lastBakeMessage;
         private MessageType lastBakeMessageType = MessageType.None;

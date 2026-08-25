@@ -372,7 +372,7 @@ straightPathOptions  = DT_STRAIGHTPATH_ALL_CROSSINGS
 `NavigationServerSettings` (ScriptableObject, грузится через
 `Resources.Load("CustomNavigation/NavigationServerSettings")`; в потребляющем проекте
 создаётся как `Assets/Resources/CustomNavigation/NavigationServerSettings.asset`,
-в этом репозитории лежит в `Assets/CustomNavigation/Resources/CustomNavigation/`):
+в этом репозитории лежит в `Assets/DataSakura/CustomNavigation/Resources/CustomNavigation/`):
 
 | Поле | Дефолт | Назначение |
 |---|---|---|
@@ -492,4 +492,3 @@ curl -s -X POST http://127.0.0.1:5079/path -H 'Content-Type: application/json' -
 6. `Server~/Navigation/NavigationUploadPolicy.cs` — 113 строк, безопасность.
 7. `Runtime/NavigationServerPathClient.cs` — вторая половина контракта, со стороны клиента.
 8. `Editor/NavigationServerInstaller.cs` — установка и управление процессом.
-

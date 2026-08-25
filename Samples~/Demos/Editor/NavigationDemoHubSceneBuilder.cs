@@ -13,9 +13,9 @@ namespace CustomNavigation.Editor
 {
     public static class NavigationDemoHubSceneBuilder
     {
-        public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastDemoHub.unity";
-        private const string TopDownScenePath = "Assets/CustomNavigation/Scene/DotRecastTopDown.unity";
-        private const string ServerClientScenePath = "Assets/CustomNavigation/Scene/DotRecastServerClient.unity";
+        public const string ScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastDemoHub.unity";
+        private const string TopDownScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastTopDown.unity";
+        private const string ServerClientScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastServerClient.unity";
 
         private static readonly string[] DemoScenePaths =
         {

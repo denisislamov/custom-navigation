@@ -11,7 +11,7 @@ namespace CustomNavigation.Editor
 {
     public static class HybridPredictedDemoSceneBuilder
     {
-        public const string ScenePath = "Assets/CustomNavigation/Scene/DotRecastHybridPredicted.unity";
+        public const string ScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastHybridPredicted.unity";
 
         public static void Rebuild()
         {
@@ -25,12 +25,12 @@ namespace CustomNavigation.Editor
             }
 
             NavigationArtifactAsset artifact = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
-                "Assets/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset");
+                "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset");
             NavigationAgentProfile agent = AssetDatabase.LoadAssetAtPath<NavigationAgentProfile>(
-                "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset");
+                "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset");
             NavigationPerformanceProfile performance =
                 AssetDatabase.LoadAssetAtPath<NavigationPerformanceProfile>(
-                    "Assets/CustomNavigation/Generated/LocalBotsDemo/LocalBots_MobilePerformance.asset");
+                    "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_MobilePerformance.asset");
             if (artifact == null || agent == null || performance == null)
             {
                 throw new InvalidOperationException(
