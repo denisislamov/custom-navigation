@@ -193,11 +193,13 @@ namespace CustomNavigation.Editor
         {
             EnsureFolder(GeneratedSettingsFolder);
             string key = NavigationIdUtility.Sanitize(level.LevelId, "level");
+            NavigationProjectSettings projectSettings = NavigationProjectSettings.instance;
 
             NavigationAgentProfile agent = level.DefaultAgentProfile
+                ?? projectSettings.DefaultAgentProfile
                 ?? CreateAsset<NavigationAgentProfile>($"{GeneratedSettingsFolder}/{key}_Agent.asset");
 
-            NavigationAreaCatalog areas = level.AreaCatalog;
+            NavigationAreaCatalog areas = level.AreaCatalog ?? projectSettings.DefaultAreaCatalog;
             if (areas == null)
             {
                 areas = CreateAsset<NavigationAreaCatalog>($"{GeneratedSettingsFolder}/{key}_Areas.asset");
@@ -205,7 +207,8 @@ namespace CustomNavigation.Editor
                 EditorUtility.SetDirty(areas);
             }
 
-            NavigationPerformanceProfile performance = level.PerformanceProfile;
+            NavigationPerformanceProfile performance =
+                level.PerformanceProfile ?? projectSettings.DefaultPerformanceProfile;
             if (performance == null)
             {
                 performance = CreateAsset<NavigationPerformanceProfile>(
@@ -217,6 +220,7 @@ namespace CustomNavigation.Editor
             Undo.RecordObject(level, "Assign Navigation Profiles");
             level.ConfigureDefaults(agent, areas, performance);
             EditorUtility.SetDirty(level);
+            PrefabUtility.RecordPrefabInstancePropertyModifications(level);
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }

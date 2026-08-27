@@ -30,6 +30,10 @@ namespace CustomNavigation.Editor.Tests
             Assert.That(open, Is.Not.Null);
             MenuItem menu = open.GetCustomAttributes(typeof(MenuItem), false).Cast<MenuItem>().Single();
             Assert.That(menu.menuItem, Is.EqualTo("Tools/DataSakura/Custom Navigation"));
+            Assert.That(NavigationEditorWindow.RequiresSelectedLevel(3), Is.False,
+                "Project defaults must be reachable from Settings without creating a level.");
+            Assert.That(NavigationEditorWindow.RequiresSelectedLevel(4), Is.False);
+            Assert.That(NavigationEditorWindow.RequiresSelectedLevel(2), Is.True);
 
             Assert.That(
                 typeof(NavigationEditorWindow).GetMethod(

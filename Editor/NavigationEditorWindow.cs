@@ -125,7 +125,7 @@ namespace CustomNavigation.Editor
             selectedTab = GUILayout.Toolbar(selectedTab, Tabs);
             EditorGUILayout.Space(6f);
 
-            bool levelRequired = selectedTab != DiagnosticsTab;
+            bool levelRequired = RequiresSelectedLevel(selectedTab);
             if (levelRequired)
             {
                 DrawLevelSelector();
@@ -161,8 +161,37 @@ namespace CustomNavigation.Editor
             RunPendingAction();
         }
 
+        internal static bool RequiresSelectedLevel(int tabIndex)
+        {
+            return tabIndex != DiagnosticsTab && tabIndex != SettingsTab;
+        }
+
         private void DrawSettings()
         {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Open Project Defaults", EditorStyles.miniButton))
+                {
+                    SettingsService.OpenProjectSettings(NavigationProjectSettings.ProjectProviderPath);
+                }
+
+                if (GUILayout.Button("Open Scene Preview Preferences", EditorStyles.miniButton))
+                {
+                    SettingsService.OpenUserPreferences(NavigationProjectSettings.PreferencesProviderPath);
+                }
+            }
+
+            EditorGUILayout.Space(8f);
+            DrawLevelSelector();
+            if (selectedLevel == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Project Defaults and Scene Preview Preferences are available without a " +
+                    "Navigation Level. Select a level to edit its profiles and local Bake Quality.",
+                    MessageType.Info);
+                return;
+            }
+
             DrawLevelSettings();
             EditorGUILayout.Space(8f);
             DrawAssetReferences();
@@ -436,18 +465,128 @@ namespace CustomNavigation.Editor
         private void DrawAssetReferences()
         {
             EditorGUILayout.LabelField("Shared profiles", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Agent, Areas, and Runtime Query Budget can be shared by several levels. " +
+                "Edit shows every known dependent scene/prefab first; Make Local Copy keeps " +
+                "the current values but isolates this level.",
+                MessageType.None);
             var levelObject = new SerializedObject(selectedLevel);
             levelObject.Update();
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(levelObject.FindProperty("defaultAgentProfile"));
-            EditorGUILayout.PropertyField(levelObject.FindProperty("areaCatalog"));
-            EditorGUILayout.PropertyField(levelObject.FindProperty("performanceProfile"));
+            DrawProfileReference<NavigationAgentProfile>(
+                levelObject,
+                "defaultAgentProfile",
+                "Agent",
+                "Agent",
+                null);
+            DrawProfileReference<NavigationAreaCatalog>(
+                levelObject,
+                "areaCatalog",
+                "Areas",
+                "Areas",
+                catalog => catalog.ResetToDefaults());
+            DrawProfileReference<NavigationPerformanceProfile>(
+                levelObject,
+                "performanceProfile",
+                "Runtime Query Budget",
+                "RuntimeQueryBudget",
+                profile => profile.ApplyStartingPreset(NavigationDeviceTier.MobileMedium));
             if (EditorGUI.EndChangeCheck())
             {
                 levelObject.ApplyModifiedProperties();
                 MarkSceneChanged();
                 MarkValidationStale();
             }
+        }
+
+        private void DrawProfileReference<T>(
+            SerializedObject levelObject,
+            string propertyName,
+            string label,
+            string fileSuffix,
+            Action<T> initialize)
+            where T : ScriptableObject
+        {
+            SerializedProperty property = levelObject.FindProperty(propertyName);
+            EditorGUILayout.PropertyField(property, new GUIContent(label));
+            T current = property.objectReferenceValue as T;
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(current == null))
+                {
+                    if (GUILayout.Button("Edit", EditorStyles.miniButton))
+                    {
+                        pendingAction = () => ShowProfileUsageAndSelect(current);
+                    }
+                }
+
+                if (GUILayout.Button("New", EditorStyles.miniButton))
+                {
+                    pendingAction = () =>
+                    {
+                        T created = CreateProfile(fileSuffix, initialize);
+                        AssignProfile(propertyName, created);
+                    };
+                }
+
+                using (new EditorGUI.DisabledScope(current == null))
+                {
+                    if (GUILayout.Button("Make Local Copy", EditorStyles.miniButton))
+                    {
+                        pendingAction = () =>
+                        {
+                            T copy = NavigationProfileAssets.MakeLocalCopy(
+                                current,
+                                $"{GeneratedSettingsFolder}/{GetSceneKey()}_{fileSuffix}.asset");
+                            AssignProfile(propertyName, copy);
+                        };
+                    }
+                }
+            }
+
+            EditorGUILayout.Space(4f);
+        }
+
+        private T CreateProfile<T>(string fileSuffix, Action<T> initialize)
+            where T : ScriptableObject
+        {
+            EnsureAssetFolder(GeneratedSettingsFolder);
+            T profile = CreateAsset<T>(
+                $"{GeneratedSettingsFolder}/{GetSceneKey()}_{fileSuffix}.asset");
+            initialize?.Invoke(profile);
+            EditorUtility.SetDirty(profile);
+            AssetDatabase.SaveAssets();
+            return profile;
+        }
+
+        private void AssignProfile(string propertyName, UnityEngine.Object profile)
+        {
+            var levelObject = new SerializedObject(selectedLevel);
+            levelObject.Update();
+            levelObject.FindProperty(propertyName).objectReferenceValue = profile;
+            levelObject.ApplyModifiedProperties();
+            MarkSceneChanged();
+            MarkValidationStale();
+        }
+
+        private static void ShowProfileUsageAndSelect(UnityEngine.Object profile)
+        {
+            IReadOnlyList<string> usages = NavigationProfileUsage.Find(profile);
+            string message = usages.Count == 0
+                ? "No Navigation Level dependencies were found."
+                : "This shared profile is used by:\n\n" + string.Join("\n", usages);
+            if (!EditorUtility.DisplayDialog(
+                    "Edit shared navigation profile",
+                    message,
+                    "Edit Profile",
+                    "Cancel"))
+            {
+                return;
+            }
+
+            Selection.activeObject = profile;
+            EditorGUIUtility.PingObject(profile);
         }
 
         private void DrawValidation()
@@ -1198,10 +1337,9 @@ namespace CustomNavigation.Editor
             {
                 EditorGUILayout.LabelField("Agent the navmesh is built for", EditorStyles.boldLabel);
                 NavigationAgentDiagram.DrawFoldout(agentProfile, selectedLevel);
-                if (GUILayout.Button("Open the agent profile", EditorStyles.miniButton))
+                if (GUILayout.Button("Edit the agent profile", EditorStyles.miniButton))
                 {
-                    Selection.activeObject = agentProfile;
-                    EditorGUIUtility.PingObject(agentProfile);
+                    pendingAction = () => ShowProfileUsageAndSelect(agentProfile);
                 }
 
                 EditorGUILayout.Space(10f);
@@ -1210,7 +1348,8 @@ namespace CustomNavigation.Editor
             EditorGUILayout.LabelField("Bake quality", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
                 "These parameters affect the navmesh itself, both on the client and on the server, " +
-                "because the artifact is the same.",
+                "because the artifact is the same. Bake Quality is stored locally on this " +
+                "Navigation Level; it is not a shared profile.",
                 MessageType.None);
             var levelObject = new SerializedObject(selectedLevel);
             levelObject.Update();
@@ -1223,6 +1362,11 @@ namespace CustomNavigation.Editor
             {
                 levelObject.ApplyModifiedProperties();
                 MarkSceneChanged();
+            }
+
+            if (GUILayout.Button("Use Project Bake Default", EditorStyles.miniButton))
+            {
+                pendingAction = ApplyProjectBakeDefault;
             }
 
             EditorGUILayout.Space(10f);
@@ -1247,15 +1391,29 @@ namespace CustomNavigation.Editor
                 return;
             }
 
-            // Presets, active budgets and the Reserved section live in
-            // NavigationPerformanceProfileEditor - it is simply embedded here.
-            UnityEditor.Editor profileEditor = UnityEditor.Editor.CreateEditor(profile);
-            if (profileEditor != null)
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
             {
-                profileEditor.OnInspectorGUI();
-                DestroyImmediate(profileEditor);
+                DrawSummaryRow("Preset", profile.DeviceTier.ToString());
+                DrawSummaryRow("Frame budget", profile.FrameBudgetMilliseconds.ToString("0.##") + " ms");
+                DrawSummaryRow("Queue / concurrent", $"{profile.MaximumQueuedQueries} / {profile.MaximumConcurrentSlicedQueries}");
+                if (GUILayout.Button("Edit Runtime Query Budget", EditorStyles.miniButton))
+                {
+                    pendingAction = () => ShowProfileUsageAndSelect(profile);
+                }
             }
 
+        }
+
+        private void ApplyProjectBakeDefault()
+        {
+            NavigationProjectSettings settings = NavigationProjectSettings.instance;
+            Undo.RecordObject(selectedLevel, "Apply Navigation Bake Default");
+            JsonUtility.FromJsonOverwrite(
+                JsonUtility.ToJson(settings.DefaultBuildSettings),
+                selectedLevel.BuildSettings);
+            EditorUtility.SetDirty(selectedLevel);
+            MarkSceneChanged();
+            MarkValidationStale();
         }
 
         // ── Tools tab ─────────────────────────────────────────────────────────
@@ -2480,16 +2638,32 @@ namespace CustomNavigation.Editor
             Undo.RegisterCreatedObjectUndo(root, "Create Navigation Level Setup");
             NavigationLevel level = Undo.AddComponent<NavigationLevel>(root);
 
-            NavigationAgentProfile agent = CreateAsset<NavigationAgentProfile>(
-                $"{GeneratedSettingsFolder}/{sceneKey}_Agent.asset");
-            NavigationAreaCatalog areas = CreateAsset<NavigationAreaCatalog>(
-                $"{GeneratedSettingsFolder}/{sceneKey}_Areas.asset");
-            areas.ResetToDefaults();
-            EditorUtility.SetDirty(areas);
-            NavigationPerformanceProfile performance = CreatePerformanceProfile(sceneKey);
+            NavigationProjectSettings projectSettings = NavigationProjectSettings.instance;
+            NavigationAgentProfile agent;
+            NavigationAreaCatalog areas;
+            NavigationPerformanceProfile performance;
+            if (projectSettings.HasAllProfileDefaults)
+            {
+                agent = projectSettings.DefaultAgentProfile;
+                areas = projectSettings.DefaultAreaCatalog;
+                performance = projectSettings.DefaultPerformanceProfile;
+            }
+            else
+            {
+                agent = CreateAsset<NavigationAgentProfile>(
+                    $"{GeneratedSettingsFolder}/{sceneKey}_Agent.asset");
+                areas = CreateAsset<NavigationAreaCatalog>(
+                    $"{GeneratedSettingsFolder}/{sceneKey}_Areas.asset");
+                areas.ResetToDefaults();
+                EditorUtility.SetDirty(areas);
+                performance = CreatePerformanceProfile(sceneKey);
+            }
 
             Undo.RecordObject(level, "Assign Navigation Profiles");
             level.ConfigureDefaults(agent, areas, performance);
+            JsonUtility.FromJsonOverwrite(
+                JsonUtility.ToJson(projectSettings.DefaultBuildSettings),
+                level.BuildSettings);
 
             // Level id and description are derived from the scene name so the designer
             // does not have to invent them from scratch.
