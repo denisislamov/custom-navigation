@@ -81,6 +81,43 @@ namespace CustomNavigation.Authoring
             set => SetEnum(DepthPreferenceKey, value);
         }
 
+        /// <summary>
+        /// Applies one complete preview snapshot to the same preferences used by the package
+        /// overlay. The change notification is raised once and no project asset is touched.
+        /// </summary>
+        public static void Apply(
+            bool sources,
+            bool baked,
+            bool runtime,
+            NavigationPreviewScope scope,
+            NavigationPreviewDepth depth)
+        {
+            if (!Enum.IsDefined(typeof(NavigationPreviewScope), scope))
+                throw new ArgumentOutOfRangeException(nameof(scope));
+            if (!Enum.IsDefined(typeof(NavigationPreviewDepth), depth))
+                throw new ArgumentOutOfRangeException(nameof(depth));
+
+            bool changed = SourcesEnabled != sources
+                           || BakedEnabled != baked
+                           || RuntimeEnabled != runtime
+                           || Scope != scope
+                           || Depth != depth;
+            if (!changed)
+            {
+                return;
+            }
+
+            SetBool(SourcesPreferenceKey, sources);
+            SetBool(BakedPreferenceKey, baked);
+            SetBool(RuntimePreferenceKey, runtime);
+#if UNITY_EDITOR
+            UnityEditor.EditorPrefs.SetBool(EnabledPreferenceKey, sources || baked || runtime);
+            UnityEditor.EditorPrefs.SetInt(ScopePreferenceKey, Convert.ToInt32(scope));
+            UnityEditor.EditorPrefs.SetInt(DepthPreferenceKey, Convert.ToInt32(depth));
+#endif
+            Changed?.Invoke();
+        }
+
         private static bool LegacyDefault
         {
             get

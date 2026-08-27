@@ -73,6 +73,10 @@ from Package Manager; Unity places it under
 
 ## Runtime configuration
 
+Consumer editor tools such as NPI should use the documented
+[`NavigationEditorApi` and `NavigationPreviewApi`](Documentation~/npi-editor-api.md)
+instead of copying package code or changing serialized package fields through reflection.
+
 Local scheduler presets and the field-by-field Active/Reserved audit are documented in
 [`Documentation~/navigation-performance.md`](Documentation~/navigation-performance.md).
 These values do not change baked geometry and are not dedicated-server presets.

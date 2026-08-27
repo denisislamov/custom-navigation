@@ -121,6 +121,13 @@ namespace CustomNavigation.Editor
     {
         public static List<NavigationValidationIssue> Validate(NavigationLevel level)
         {
+            return Validate(level, level != null ? level.LevelId : string.Empty);
+        }
+
+        internal static List<NavigationValidationIssue> Validate(
+            NavigationLevel level,
+            string effectiveLevelId)
+        {
             var issues = new List<NavigationValidationIssue>();
             if (level == null)
             {
@@ -140,7 +147,7 @@ namespace CustomNavigation.Editor
             }
 
             ValidateSources(level, issues);
-            ValidateStableIds(level, issues);
+            ValidateStableIds(level, effectiveLevelId, issues);
             ValidatePerformance(level, issues);
             ValidateAreasAgainstCatalog(level, issues);
             return issues;
@@ -314,6 +321,7 @@ namespace CustomNavigation.Editor
 
         private static void ValidateStableIds(
             NavigationLevel level,
+            string effectiveLevelId,
             List<NavigationValidationIssue> issues)
         {
             NavigationLevel[] loadedLevels = Object.FindObjectsByType<NavigationLevel>(
@@ -322,11 +330,11 @@ namespace CustomNavigation.Editor
             for (int i = 0; i < loadedLevels.Length; i++)
             {
                 if (loadedLevels[i] != level
-                    && string.Equals(loadedLevels[i].LevelId, level.LevelId, StringComparison.Ordinal))
+                    && string.Equals(loadedLevels[i].LevelId, effectiveLevelId, StringComparison.Ordinal))
                 {
                     issues.Add(new NavigationValidationIssue(
                         NavigationValidationSeverity.Error,
-                        $"Duplicate Navigation Level ID '{level.LevelId}'. Stable artifact filenames " +
+                        $"Duplicate Navigation Level ID '{effectiveLevelId}'. Stable artifact filenames " +
                         "must not let two loaded levels overwrite each other.",
                         level,
                         NavigationValidationCategory.Identifiers));

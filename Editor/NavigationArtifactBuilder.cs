@@ -285,7 +285,7 @@ namespace CustomNavigation.Editor
         /// <summary>Builds the navmesh and writes the client assets. Uploads nothing to the server.</summary>
         public static NavigationArtifactBuildResult BuildForClient(NavigationLevel level)
         {
-            return BuildForClient(level, null);
+            return BuildForClient(level, null, null);
         }
 
         /// <summary>
@@ -296,13 +296,30 @@ namespace CustomNavigation.Editor
             NavigationLevel level,
             NavigationBuildProgress progress)
         {
+            return BuildForClient(level, progress, null);
+        }
+
+        /// <summary>
+        /// Internal integration path used when an editor owner supplies the effective level id
+        /// for this explicit operation. The component's standalone id is never mutated.
+        /// </summary>
+        internal static NavigationArtifactBuildResult BuildForClient(
+            NavigationLevel level,
+            NavigationBuildProgress progress,
+            string effectiveLevelId)
+        {
             if (level == null)
             {
                 throw new ArgumentNullException(nameof(level));
             }
 
             progress?.Stage("Validating the level");
-            List<NavigationValidationIssue> issues = NavigationAuthoringValidator.Validate(level);
+            string requestedLevelId = string.IsNullOrEmpty(effectiveLevelId)
+                ? level.LevelId
+                : effectiveLevelId;
+            List<NavigationValidationIssue> issues = NavigationAuthoringValidator.Validate(
+                level,
+                requestedLevelId);
             NavigationValidationIssue firstError = issues.FirstOrDefault(
                 issue => issue.Severity == NavigationValidationSeverity.Error);
             if (firstError.Severity == NavigationValidationSeverity.Error)
@@ -311,7 +328,7 @@ namespace CustomNavigation.Editor
                     "Navigation authoring validation failed: " + firstError.Message);
             }
 
-            string safeLevelId = NavigationIdUtility.Sanitize(level.LevelId, "level");
+            string safeLevelId = NavigationIdUtility.Sanitize(requestedLevelId, "level");
             NavigationArtifactAsset legacyAsset = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
                 GetLegacyClientAssetPath(safeLevelId));
             if (legacyAsset != null)

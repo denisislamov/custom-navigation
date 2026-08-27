@@ -4,6 +4,26 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.14] - 2026-08-28
+
+### Added
+- Added `NavigationEditorApi` with standalone/external Level ID bindings, read-only validation,
+  separate navigation bake, and verified artifact summaries for NPI-style editor adapters.
+- Added `NavigationPreviewApi`, an immutable snapshot over the same Sources/Baked/Runtime,
+  Scope, and Visible/X-Ray state used by the package Overlay.
+- Added a no-server sample caller and focused consumer-contract fixtures.
+
+### Compatibility
+- Existing `NavigationBakeCommand.Validate/Execute` signatures and standalone behavior remain
+  available. External managed IDs are operation-scoped and never mutate the serialized level.
+- The editor assembly still depends only on Custom Navigation Authoring/Runtime; no NPI, physics,
+  EFT, gameplay-server, or fourth runtime package dependency was added.
+
+### Tests
+- Added coverage for standalone and managed IDs, invalid bindings, pre-write conflict rejection,
+  bake/read-summary delivery fields, side-effect-free preview reads, shared preview state, and the
+  editor assembly dependency boundary.
+
 ## [0.6.13] - 2026-08-28
 
 ### Added
