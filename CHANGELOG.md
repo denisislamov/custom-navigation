@@ -4,6 +4,29 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.9] - 2026-08-27
+
+### Added
+- Added `Project Settings/DataSakura/Custom Navigation` for shared Agent, Areas,
+  Runtime Query Budget, and local Bake Quality defaults. Assets are created only by the
+  explicit `Create Defaults` action, which preserves existing profiles.
+- Added `Preferences/DataSakura/Custom Navigation/Scene Preview` for personal preview state
+  stored in `EditorPrefs`, separately from versioned project defaults.
+- Added `Edit`, `New`, and `Make Local Copy` profile actions. Edit lists dependent scenes,
+  prefabs, and loaded levels before opening a shared profile; local copies preserve values
+  without changing other levels.
+
+### Changed
+- Newly created or repaired Navigation Levels reuse configured project defaults while
+  preserving existing references, Undo/Redo, and prefab overrides.
+- The Settings tab exposes project defaults and preview preferences even when no
+  Navigation Level is selected. Bake Quality remains local to each level.
+
+### Tests
+- Added EditMode coverage for provider paths and scopes, no-write-on-open behavior,
+  idempotent defaults, shared profiles, local copies, Undo, prefab overrides, and unchanged
+  navigation payload bytes/hash across Runtime Query Budget changes.
+
 ## [0.6.8] - 2026-08-27
 
 ### Added
