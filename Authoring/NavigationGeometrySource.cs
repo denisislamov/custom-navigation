@@ -54,19 +54,9 @@ namespace CustomNavigation.Authoring
             }
         }
 
-        private void OnDrawGizmos()
-        {
-            if (!NavigationHighlightSettings.Enabled)
-            {
-                return;
-            }
-
-            DrawGeometryGizmo();
-        }
-
         private void OnDrawGizmosSelected()
         {
-            if (NavigationHighlightSettings.Enabled)
+            if (NavigationHighlightSettings.SourcesEnabled)
             {
                 return;
             }

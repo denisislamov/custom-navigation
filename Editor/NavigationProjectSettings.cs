@@ -221,15 +221,27 @@ namespace CustomNavigation.Editor
         private static void DrawPreviewPreferences()
         {
             EditorGUILayout.HelpBox(
-                "Scene Preview is personal editor state stored in EditorPrefs. It is not written " +
-                "to project assets and is never included in a navigation bake.",
+                "Scene Preview is personal editor state shared with the Scene View overlay. " +
+                "It is not written to project assets and is never included in a navigation bake.",
                 MessageType.Info);
-            bool enabled = EditorGUILayout.ToggleLeft(
-                "Enable Custom Navigation scene preview",
-                NavigationHighlightSettings.Enabled);
-            if (enabled != NavigationHighlightSettings.Enabled)
+            EditorGUI.BeginChangeCheck();
+            NavigationHighlightSettings.SourcesEnabled = EditorGUILayout.ToggleLeft(
+                "Sources (sand dotted bounds)",
+                NavigationHighlightSettings.SourcesEnabled);
+            NavigationHighlightSettings.BakedEnabled = EditorGUILayout.ToggleLeft(
+                "Baked (dusty violet surface)",
+                NavigationHighlightSettings.BakedEnabled);
+            NavigationHighlightSettings.RuntimeEnabled = EditorGUILayout.ToggleLeft(
+                "Runtime (light lilac routes)",
+                NavigationHighlightSettings.RuntimeEnabled);
+            NavigationHighlightSettings.Scope = (NavigationPreviewScope)EditorGUILayout.EnumPopup(
+                "Scope",
+                NavigationHighlightSettings.Scope);
+            NavigationHighlightSettings.Depth = (NavigationPreviewDepth)EditorGUILayout.EnumPopup(
+                "Visibility",
+                NavigationHighlightSettings.Depth);
+            if (EditorGUI.EndChangeCheck())
             {
-                NavigationHighlightSettings.Enabled = enabled;
                 SceneView.RepaintAll();
             }
         }

@@ -37,6 +37,17 @@ namespace CustomNavigation.Editor.Tests
         }
 
         [Test]
+        public void PreviewLayerStateUsesDistinctPersonalPreferenceKeys()
+        {
+            Assert.That(NavigationHighlightSettings.SourcesPreferenceKey,
+                Is.Not.EqualTo(NavigationHighlightSettings.BakedPreferenceKey));
+            Assert.That(NavigationHighlightSettings.BakedPreferenceKey,
+                Is.Not.EqualTo(NavigationHighlightSettings.RuntimePreferenceKey));
+            Assert.That(NavigationHighlightSettings.ScopePreferenceKey,
+                Is.Not.EqualTo(NavigationHighlightSettings.DepthPreferenceKey));
+        }
+
+        [Test]
         public void CreatingProviderDescriptorsDoesNotCreateFiles()
         {
             bool settingsExisted = File.Exists(NavigationProjectSettings.SettingsAssetPath);

@@ -92,7 +92,7 @@ namespace CustomNavigation.Runtime
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (!NavigationHighlightSettings.Enabled || waypoints == null || waypoints.Count == 0)
+            if (!NavigationHighlightSettings.RuntimeEnabled || waypoints == null || waypoints.Count == 0)
             {
                 return;
             }
@@ -102,7 +102,7 @@ namespace CustomNavigation.Runtime
 
         private void OnDrawGizmosSelected()
         {
-            if (NavigationHighlightSettings.Enabled || waypoints == null || waypoints.Count == 0)
+            if (NavigationHighlightSettings.RuntimeEnabled || waypoints == null || waypoints.Count == 0)
             {
                 return;
             }
@@ -112,8 +112,12 @@ namespace CustomNavigation.Runtime
 
         private void DrawRouteGizmo()
         {
-            Color waypointColor = new Color(0.95f, 0.6f, 0.1f, 0.9f);
-            Color lineColor = new Color(0.95f, 0.6f, 0.1f, 0.5f);
+            Color waypointColor = NavigationHighlightPalette.Runtime;
+            Color lineColor = new Color(
+                NavigationHighlightPalette.Runtime.r,
+                NavigationHighlightPalette.Runtime.g,
+                NavigationHighlightPalette.Runtime.b,
+                0.55f);
             Gizmos.color = waypointColor;
             Vector3? prev = null;
             int validCount = 0;

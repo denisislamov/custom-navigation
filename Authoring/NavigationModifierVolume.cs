@@ -32,7 +32,7 @@ namespace CustomNavigation.Authoring
 
         private void OnDrawGizmos()
         {
-            if (!NavigationHighlightSettings.Enabled)
+            if (!NavigationHighlightSettings.SourcesEnabled)
             {
                 return;
             }
@@ -42,7 +42,7 @@ namespace CustomNavigation.Authoring
 
         private void OnDrawGizmosSelected()
         {
-            if (NavigationHighlightSettings.Enabled)
+            if (NavigationHighlightSettings.SourcesEnabled)
             {
                 return;
             }
@@ -55,8 +55,6 @@ namespace CustomNavigation.Authoring
             Color color = NavigationHighlightPalette.ForGeometryMode(mode);
             Matrix4x4 previousMatrix = Gizmos.matrix;
             Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.color = new Color(color.r, color.g, color.b, 0.12f);
-            Gizmos.DrawCube(center, size);
             Gizmos.color = color;
             Gizmos.DrawWireCube(center, size);
             Gizmos.matrix = previousMatrix;

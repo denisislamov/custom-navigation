@@ -7,6 +7,7 @@ using CustomNavigation.Runtime;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEditor.Overlays;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -66,6 +67,17 @@ namespace CustomNavigation.Editor.Tests
             Assert.That(
                 toolsItems,
                 Is.EqualTo(new[] { "Tools/DataSakura/Custom Navigation Window" }));
+        }
+
+        [Test]
+        public void ScenePreviewUsesANativeSceneViewOverlay()
+        {
+            OverlayAttribute overlay = typeof(NavigationSceneViewOverlay)
+                .GetCustomAttribute<OverlayAttribute>();
+            Assert.That(overlay, Is.Not.Null);
+            Assert.That(overlay.editorWindowType, Is.EqualTo(typeof(SceneView)));
+            Assert.That(overlay.id, Is.EqualTo(NavigationSceneViewOverlay.OverlayId));
+            Assert.That(overlay.displayName, Is.EqualTo("Custom Navigation"));
         }
 
         [Test]

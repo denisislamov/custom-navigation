@@ -164,7 +164,7 @@ namespace CustomNavigation.Authoring
 
         private void OnDrawGizmos()
         {
-            if (!NavigationHighlightSettings.Enabled || !TryGetGeometryBounds(out Bounds bounds))
+            if (!NavigationHighlightSettings.SourcesEnabled || !TryGetGeometryBounds(out Bounds bounds))
             {
                 return;
             }

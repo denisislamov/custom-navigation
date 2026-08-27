@@ -30,13 +30,12 @@ namespace CustomNavigation.Editor
 
         private static void AppendToggleState(StringBuilder report)
         {
-            bool storedValue = EditorPrefs.GetBool(
-                NavigationHighlightSettings.EnabledPreferenceKey,
-                NavigationHighlightSettings.DefaultEnabled);
             report.AppendLine(
-                $"- Scene Preview/Navigation Highlight: " +
-                $"{(NavigationHighlightSettings.Enabled ? "ON" : "OFF")} " +
-                $"(EditorPrefs '{NavigationHighlightSettings.EnabledPreferenceKey}'={storedValue})");
+                $"- Scene Preview: sources={NavigationHighlightSettings.SourcesEnabled}, " +
+                $"baked={NavigationHighlightSettings.BakedEnabled}, " +
+                $"runtime={NavigationHighlightSettings.RuntimeEnabled}, " +
+                $"scope={NavigationHighlightSettings.Scope}, " +
+                $"visibility={NavigationHighlightSettings.Depth}");
             if (!NavigationHighlightSettings.Enabled)
             {
                 report.AppendLine(

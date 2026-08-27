@@ -4,6 +4,26 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.11] - 2026-08-27
+
+### Added
+- Added the native Scene View `Custom Navigation` overlay with independently persisted
+  Sources, Baked, and Runtime layers, level scope, Visible/X-Ray depth, Preferences access,
+  status, and `Frame Level` controls.
+- Added explicit `Not baked`, `Out of date`, and `No runtime data` preview states.
+
+### Changed
+- Replaced the legacy highlight presentation with a muted sand/violet/tobacco/plum palette,
+  dotted source bounds, translucent baked surfaces, polygon boundaries, and directional
+  runtime routes.
+- Baked preview meshes are now prepared by invalidation callbacks and reused during Scene
+  View repaint. Cached meshes and materials are released on invalidation, layer disable,
+  assembly reload, and editor shutdown; source meshes are never substituted for baked data.
+
+### Tests
+- Added EditMode coverage for native Overlay registration and distinct personal preference
+  keys. Existing Tools-menu coverage continues to reject a separate highlight toggle.
+
 ## [0.6.10] - 2026-08-27
 
 ### Fixed

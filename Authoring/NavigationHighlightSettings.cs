@@ -3,78 +3,171 @@ using UnityEngine;
 
 namespace CustomNavigation.Authoring
 {
+    public enum NavigationPreviewScope
+    {
+        ActiveLevel,
+        Selection,
+        AllLoadedLevels
+    }
+
+    public enum NavigationPreviewDepth
+    {
+        Visible,
+        XRay
+    }
+
     /// <summary>
-    /// Single switch for the navigation highlight: the navmesh overlay in the Scene View
-    /// and every authoring gizmo. The value lives in EditorPrefs, so it is shared
-    /// by every scene in the project and survives an editor restart.
+    /// Personal Scene View preview state. The overlay and Preferences page are two views of
+    /// these EditorPrefs values; reading them never creates or modifies project assets.
     /// </summary>
     public static class NavigationHighlightSettings
     {
         public const string EnabledPreferenceKey = "CustomNavigation.NavigationHighlight.Enabled";
+        public const string SourcesPreferenceKey = "CustomNavigation.ScenePreview.Sources";
+        public const string BakedPreferenceKey = "CustomNavigation.ScenePreview.Baked";
+        public const string RuntimePreferenceKey = "CustomNavigation.ScenePreview.Runtime";
+        public const string ScopePreferenceKey = "CustomNavigation.ScenePreview.Scope";
+        public const string DepthPreferenceKey = "CustomNavigation.ScenePreview.Depth";
         public const bool DefaultEnabled = true;
-
-        private static bool enabledValue = DefaultEnabled;
-        private static bool loaded;
 
         public static event Action Changed;
 
         public static bool Enabled
         {
-            get
-            {
-                EnsureLoaded();
-                return enabledValue;
-            }
+            get => SourcesEnabled || BakedEnabled || RuntimeEnabled;
             set
             {
-                EnsureLoaded();
-                if (enabledValue == value)
-                {
-                    return;
-                }
-
-                enabledValue = value;
+                bool changed = SourcesEnabled != value || BakedEnabled != value || RuntimeEnabled != value;
+                SetBool(SourcesPreferenceKey, value);
+                SetBool(BakedPreferenceKey, value);
+                SetBool(RuntimePreferenceKey, value);
 #if UNITY_EDITOR
                 UnityEditor.EditorPrefs.SetBool(EnabledPreferenceKey, value);
 #endif
-                Changed?.Invoke();
+                if (changed)
+                {
+                    Changed?.Invoke();
+                }
             }
         }
 
-        private static void EnsureLoaded()
+        public static bool SourcesEnabled
         {
-            if (loaded)
+            get => GetBool(SourcesPreferenceKey, LegacyDefault);
+            set => SetLayer(SourcesPreferenceKey, value);
+        }
+
+        public static bool BakedEnabled
+        {
+            get => GetBool(BakedPreferenceKey, LegacyDefault);
+            set => SetLayer(BakedPreferenceKey, value);
+        }
+
+        public static bool RuntimeEnabled
+        {
+            get => GetBool(RuntimePreferenceKey, LegacyDefault);
+            set => SetLayer(RuntimePreferenceKey, value);
+        }
+
+        public static NavigationPreviewScope Scope
+        {
+            get => GetEnum(ScopePreferenceKey, NavigationPreviewScope.ActiveLevel);
+            set => SetEnum(ScopePreferenceKey, value);
+        }
+
+        public static NavigationPreviewDepth Depth
+        {
+            get => GetEnum(DepthPreferenceKey, NavigationPreviewDepth.Visible);
+            set => SetEnum(DepthPreferenceKey, value);
+        }
+
+        private static bool LegacyDefault
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return UnityEditor.EditorPrefs.GetBool(EnabledPreferenceKey, DefaultEnabled);
+#else
+                return DefaultEnabled;
+#endif
+            }
+        }
+
+        private static bool GetBool(string key, bool fallback)
+        {
+#if UNITY_EDITOR
+            return UnityEditor.EditorPrefs.GetBool(key, fallback);
+#else
+            return fallback;
+#endif
+        }
+
+        private static void SetLayer(string key, bool value)
+        {
+            if (GetBool(key, LegacyDefault) == value)
             {
                 return;
             }
 
-            loaded = true;
+            SetBool(key, value);
+            Changed?.Invoke();
+        }
+
+        private static void SetBool(string key, bool value)
+        {
 #if UNITY_EDITOR
-            enabledValue = UnityEditor.EditorPrefs.GetBool(EnabledPreferenceKey, DefaultEnabled);
+            UnityEditor.EditorPrefs.SetBool(key, value);
 #endif
+        }
+
+        private static T GetEnum<T>(string key, T fallback) where T : struct
+        {
+#if UNITY_EDITOR
+            int stored = UnityEditor.EditorPrefs.GetInt(key, Convert.ToInt32(fallback));
+            return Enum.IsDefined(typeof(T), stored) ? (T)(object)stored : fallback;
+#else
+            return fallback;
+#endif
+        }
+
+        private static void SetEnum<T>(string key, T value) where T : struct
+        {
+            if (Equals(GetEnum(key, default(T)), value))
+            {
+                return;
+            }
+
+#if UNITY_EDITOR
+            UnityEditor.EditorPrefs.SetInt(key, Convert.ToInt32(value));
+#endif
+            Changed?.Invoke();
         }
     }
 
-    /// <summary>
-    /// Shared highlight palette so that the navmesh overlay and the authoring gizmos
-    /// use consistent colors.
-    /// </summary>
+    /// <summary>Muted palette reserved for Custom Navigation preview layers.</summary>
     public static class NavigationHighlightPalette
     {
-        public static readonly Color Include = new Color(0.2f, 0.8f, 1f, 0.75f);
-        public static readonly Color Block = new Color(1f, 0.2f, 0.12f, 0.75f);
-        public static readonly Color Ignore = new Color(0.55f, 0.55f, 0.6f, 0.4f);
-        public static readonly Color Link = new Color(1f, 0.75f, 0.1f, 0.9f);
-        public static readonly Color PortalOpen = new Color(0.35f, 1f, 0.55f, 0.9f);
-        public static readonly Color PortalClosed = new Color(1f, 0.4f, 0.3f, 0.9f);
-        public static readonly Color TestPointRequired = new Color(1f, 0.85f, 0.15f, 0.9f);
-        public static readonly Color TestPointOptional = new Color(0.5f, 0.8f, 1f, 0.7f);
-        public static readonly Color LevelBounds = new Color(0.4f, 0.85f, 1f, 0.5f);
-        public static readonly Color NavigationMeshFallback = new Color(0.1f, 0.75f, 0.5f, 1f);
-        public static readonly Color NavigationMeshEdge = new Color(0.03f, 0.16f, 0.12f, 0.85f);
-        public static readonly Color NavigationMeshBoundary = new Color(0.05f, 0.05f, 0.08f, 1f);
+        public static readonly Color Sources = FromHex(0xC5AC83, 0.95f);
+        public static readonly Color Baked = FromHex(0x9375A3, 1f);
+        public static readonly Color Runtime = FromHex(0xB49BC2, 1f);
+        public static readonly Color Changed = FromHex(0xA87945, 1f);
+        public static readonly Color Error = FromHex(0x684779, 1f);
+        public static readonly Color ErrorBackdrop = FromHex(0xF0DEB8, 1f);
 
-        public const float NavigationMeshFillAlpha = 0.32f;
+        public static readonly Color Include = Sources;
+        public static readonly Color Block = Changed;
+        public static readonly Color Ignore = FromHex(0xC5AC83, 0.42f);
+        public static readonly Color Link = FromHex(0xB49BC2, 0.95f);
+        public static readonly Color PortalOpen = FromHex(0xC5AC83, 0.95f);
+        public static readonly Color PortalClosed = FromHex(0x684779, 0.95f);
+        public static readonly Color TestPointRequired = FromHex(0xA87945, 0.95f);
+        public static readonly Color TestPointOptional = FromHex(0xB49BC2, 0.78f);
+        public static readonly Color LevelBounds = FromHex(0xC5AC83, 0.72f);
+        public static readonly Color NavigationMeshFallback = Baked;
+        public static readonly Color NavigationMeshEdge = FromHex(0x9375A3, 0.96f);
+        public static readonly Color NavigationMeshBoundary = FromHex(0x684779, 1f);
+
+        public const float NavigationMeshFillAlpha = 0.22f;
 
         public static Color ForGeometryMode(NavigationGeometryMode mode)
         {
@@ -87,6 +180,15 @@ namespace CustomNavigation.Authoring
                 default:
                     return Include;
             }
+        }
+
+        private static Color FromHex(int rgb, float alpha)
+        {
+            return new Color(
+                ((rgb >> 16) & 0xff) / 255f,
+                ((rgb >> 8) & 0xff) / 255f,
+                (rgb & 0xff) / 255f,
+                alpha);
         }
     }
 }

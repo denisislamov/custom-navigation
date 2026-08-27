@@ -1,6 +1,6 @@
 {
   "name": "com.datasakura.custom-navigation",
-  "version": "0.6.10",
+  "version": "0.6.11",
   "displayName": "DataSakura Custom Navigation",
   "description": "Physics-free navigation for Unity built on DotRecast. Offline (editor) navmesh baking, a deterministic binary artifact shared by client and server, a budgeted local query scheduler, and an optional authoritative HTTP navigation server. Does not use Unity Physics or the built-in NavMesh.",
   "unity": "6000.3",

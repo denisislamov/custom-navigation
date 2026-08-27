@@ -19,11 +19,11 @@ namespace CustomNavigation.Editor
     {
         private const string PrefsPrefix = "CustomNavigation.SceneTools.";
 
-        private static readonly Color StartColor = new Color(0.35f, 1f, 0.55f, 1f);
-        private static readonly Color DestinationColor = new Color(1f, 0.45f, 0.3f, 1f);
-        private static readonly Color LocalPathColor = new Color(0.3f, 0.9f, 1f, 1f);
-        private static readonly Color ServerPathColor = new Color(1f, 0.85f, 0.2f, 1f);
-        private static readonly Color AgentColor = new Color(0.2f, 0.8f, 1f, 1f);
+        private static readonly Color StartColor = NavigationHighlightPalette.Sources;
+        private static readonly Color DestinationColor = NavigationHighlightPalette.Changed;
+        private static readonly Color LocalPathColor = NavigationHighlightPalette.Runtime;
+        private static readonly Color ServerPathColor = NavigationHighlightPalette.Runtime;
+        private static readonly Color AgentColor = NavigationHighlightPalette.Sources;
 
         private static Material analysisMaterial;
 
@@ -83,6 +83,10 @@ namespace CustomNavigation.Editor
         public static NavigationNavmeshAnalysis Analysis { get; private set; }
         public static NavigationAgentProfile PreviewAgent { get; set; }
 
+        internal static bool HasRuntimeData =>
+            (LocalResult != null && LocalResult.Success && LocalResult.Points.Length > 1)
+            || ServerPath.Length > 1;
+
         /// <summary>Whether a handle was dragged: the window highlights that the result is stale.</summary>
         public static bool ProbePointsMovedSinceQuery
         {
@@ -93,8 +97,22 @@ namespace CustomNavigation.Editor
         static NavigationSceneTools()
         {
             SceneView.duringSceneGui += OnSceneGui;
+            NavigationHighlightSettings.Changed += OnPreviewSettingsChanged;
             AssemblyReloadEvents.beforeAssemblyReload += ReleaseGraphics;
             EditorApplication.quitting += ReleaseGraphics;
+        }
+
+        private static void OnPreviewSettingsChanged()
+        {
+            if (!NavigationHighlightSettings.RuntimeEnabled)
+            {
+                ReleaseGraphics();
+            }
+
+            if (!NavigationHighlightSettings.SourcesEnabled)
+            {
+                PreviewAgent = null;
+            }
         }
 
         public static void SetLocalResult(NavigationProbeResult result)
@@ -151,9 +169,23 @@ namespace CustomNavigation.Editor
                 return;
             }
 
-            DrawAnalysis();
-            DrawAgentPreview();
-            DrawProbe();
+            CompareFunction previousDepth = Handles.zTest;
+            Handles.zTest = NavigationHighlightSettings.Depth == NavigationPreviewDepth.XRay
+                ? CompareFunction.Always
+                : CompareFunction.LessEqual;
+
+            if (NavigationHighlightSettings.SourcesEnabled)
+            {
+                DrawAgentPreview();
+            }
+
+            if (NavigationHighlightSettings.RuntimeEnabled)
+            {
+                DrawAnalysis();
+                DrawProbe();
+            }
+
+            Handles.zTest = previousDepth;
         }
 
         private static void DrawAnalysis()
@@ -302,7 +334,8 @@ namespace CustomNavigation.Editor
                 Handles.color = ProbePointsMovedSinceQuery
                     ? new Color(LocalPathColor.r, LocalPathColor.g, LocalPathColor.b, 0.35f)
                     : LocalPathColor;
-                Handles.DrawAAPolyLine(5f, result.Points);
+                Handles.DrawAAPolyLine(3f, result.Points);
+                DrawRouteArrows(result.Points);
                 for (int i = 0; i < result.Points.Length; i++)
                 {
                     Handles.DrawSolidDisc(result.Points[i] + Vector3.up * 0.02f, Vector3.up, 0.09f);
@@ -319,6 +352,7 @@ namespace CustomNavigation.Editor
             {
                 Handles.color = ServerPathColor;
                 Handles.DrawAAPolyLine(3f, ServerPath);
+                DrawRouteArrows(ServerPath);
                 Handles.Label(ServerPath[ServerPath.Length / 2] + Vector3.up * 0.9f, "Server");
             }
 
@@ -341,6 +375,27 @@ namespace CustomNavigation.Editor
             Handles.color = color;
             Handles.DrawDottedLine(from, to, 3f);
             Handles.DrawWireDisc(to, Vector3.up, 0.3f);
+        }
+
+        private static void DrawRouteArrows(Vector3[] points)
+        {
+            for (int i = 1; i < points.Length; i += 3)
+            {
+                Vector3 direction = points[i] - points[i - 1];
+                if (direction.sqrMagnitude < 0.0001f)
+                {
+                    continue;
+                }
+
+                Vector3 position = Vector3.Lerp(points[i - 1], points[i], 0.65f);
+                float size = HandleUtility.GetHandleSize(position) * 0.075f;
+                Handles.ConeHandleCap(
+                    0,
+                    position,
+                    Quaternion.LookRotation(direction.normalized),
+                    size,
+                    EventType.Repaint);
+            }
         }
 
         // -- Position storage -----------------------------------------------------
@@ -370,8 +425,4 @@ namespace CustomNavigation.Editor
         }
     }
 }
-
-
-
-
 

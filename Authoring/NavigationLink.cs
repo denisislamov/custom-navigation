@@ -50,7 +50,7 @@ namespace CustomNavigation.Authoring
 
         private void OnDrawGizmos()
         {
-            if (!NavigationHighlightSettings.Enabled)
+            if (!NavigationHighlightSettings.SourcesEnabled)
             {
                 return;
             }
@@ -60,7 +60,7 @@ namespace CustomNavigation.Authoring
 
         private void OnDrawGizmosSelected()
         {
-            if (NavigationHighlightSettings.Enabled)
+            if (NavigationHighlightSettings.SourcesEnabled)
             {
                 return;
             }

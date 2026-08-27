@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
 using DotRecast.Detour;
@@ -54,7 +55,15 @@ namespace CustomNavigation.Editor
         private static readonly List<NavigationArtifactAsset> ActiveArtifacts =
             new List<NavigationArtifactAsset>();
 
+        private static readonly List<NavigationArtifactAsset> CachedArtifactKeys =
+            new List<NavigationArtifactAsset>();
+
         private static readonly List<NavigationLevel> ActiveLevels = new List<NavigationLevel>();
+
+        private static readonly List<NavigationGeometrySource> ActiveSources =
+            new List<NavigationGeometrySource>();
+
+        private static readonly List<MeshFilter> SourceMeshes = new List<MeshFilter>();
 
         private static readonly Dictionary<int, Color> AreaColors = new Dictionary<int, Color>();
 
@@ -67,6 +76,7 @@ namespace CustomNavigation.Editor
 
         private static Material overlayMaterial;
         private static bool sourcesDirty = true;
+        private static bool refreshQueued;
         private static int areaSignature;
 
         static NavigationHighlightOverlay()
@@ -74,11 +84,15 @@ namespace CustomNavigation.Editor
             SceneView.duringSceneGui += OnSceneGui;
             NavigationHighlightSettings.Changed += OnHighlightToggled;
             EditorApplication.hierarchyChanged += MarkSourcesDirty;
+            EditorApplication.projectChanged += MarkSourcesDirty;
+            Selection.selectionChanged += MarkSourcesDirty;
+            ObjectChangeEvents.changesPublished += OnObjectChangesPublished;
             EditorSceneManager.sceneOpened += OnSceneOpened;
             EditorSceneManager.sceneClosed += OnSceneClosed;
             EditorSceneManager.activeSceneChangedInEditMode += OnActiveSceneChanged;
             AssemblyReloadEvents.beforeAssemblyReload += ReleaseAll;
             EditorApplication.quitting += ReleaseAll;
+            ScheduleRefresh();
         }
 
         internal static void InvalidateArtifacts()
@@ -90,6 +104,7 @@ namespace CustomNavigation.Editor
 
             Overlays.Clear();
             sourcesDirty = true;
+            ScheduleRefresh();
             SceneView.RepaintAll();
         }
 
@@ -134,15 +149,76 @@ namespace CustomNavigation.Editor
         private static void OnHighlightToggled()
         {
             sourcesDirty = true;
+            ScheduleRefresh();
             SceneView.RepaintAll();
         }
 
         private static void MarkSourcesDirty()
         {
             sourcesDirty = true;
+            ScheduleRefresh();
+        }
+
+        private static void OnObjectChangesPublished(ref ObjectChangeEventStream stream)
+        {
+            MarkSourcesDirty();
+        }
+
+        private static void ScheduleRefresh()
+        {
+            if (refreshQueued)
+            {
+                return;
+            }
+
+            refreshQueued = true;
+            EditorApplication.delayCall += RefreshCache;
+        }
+
+        private static void RefreshCache()
+        {
+            refreshQueued = false;
+            if (!sourcesDirty)
+            {
+                return;
+            }
+
+            sourcesDirty = false;
+            CollectSources();
+            RefreshAreaColors();
+            if (NavigationHighlightSettings.BakedEnabled)
+            {
+                PruneInactiveOverlays();
+                for (int i = 0; i < ActiveArtifacts.Count; i++)
+                {
+                    GetOrBuildOverlay(ActiveArtifacts[i]);
+                }
+            }
+            else
+            {
+                ReleaseOverlayMeshes();
+                ReleaseMaterial();
+            }
+
+            SceneView.RepaintAll();
         }
 
         private static void ReleaseAll()
+        {
+            ReleaseOverlayMeshes();
+            ReleaseMaterial();
+        }
+
+        private static void ReleaseMaterial()
+        {
+            if (overlayMaterial != null)
+            {
+                Object.DestroyImmediate(overlayMaterial);
+                overlayMaterial = null;
+            }
+        }
+
+        private static void ReleaseOverlayMeshes()
         {
             foreach (CachedOverlay overlay in Overlays.Values)
             {
@@ -150,10 +226,29 @@ namespace CustomNavigation.Editor
             }
 
             Overlays.Clear();
-            if (overlayMaterial != null)
+        }
+
+        private static void PruneInactiveOverlays()
+        {
+            CachedArtifactKeys.Clear();
+            foreach (NavigationArtifactAsset artifact in Overlays.Keys)
             {
-                Object.DestroyImmediate(overlayMaterial);
-                overlayMaterial = null;
+                CachedArtifactKeys.Add(artifact);
+            }
+
+            for (int i = 0; i < CachedArtifactKeys.Count; i++)
+            {
+                NavigationArtifactAsset artifact = CachedArtifactKeys[i];
+                if (artifact != null && ActiveArtifacts.Contains(artifact))
+                {
+                    continue;
+                }
+
+                if (Overlays.TryGetValue(artifact, out CachedOverlay overlay))
+                {
+                    overlay.Release();
+                    Overlays.Remove(artifact);
+                }
             }
         }
 
@@ -169,21 +264,26 @@ namespace CustomNavigation.Editor
 
             if (sourcesDirty)
             {
-                sourcesDirty = false;
-                CollectSources();
+                ScheduleRefresh();
+                return;
             }
 
-            RefreshAreaColors();
-            if (ActiveArtifacts.Count == 0)
+            if (NavigationHighlightSettings.SourcesEnabled)
+            {
+                DrawSources();
+            }
+
+            if (!NavigationHighlightSettings.BakedEnabled || ActiveArtifacts.Count == 0)
             {
                 return;
             }
 
             EnsureMaterial();
+            ApplyDepthMode();
             for (int i = 0; i < ActiveArtifacts.Count; i++)
             {
                 NavigationArtifactAsset artifact = ActiveArtifacts[i];
-                CachedOverlay overlay = GetOrBuildOverlay(artifact);
+                Overlays.TryGetValue(artifact, out CachedOverlay overlay);
                 if (overlay?.Surface == null)
                 {
                     continue;
@@ -216,13 +316,25 @@ namespace CustomNavigation.Editor
             overlayMaterial.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
             overlayMaterial.SetInt("_Cull", (int)CullMode.Off);
             overlayMaterial.SetInt("_ZWrite", 0);
-            overlayMaterial.SetInt("_ZTest", (int)CompareFunction.LessEqual);
+            ApplyDepthMode();
+        }
+
+        private static void ApplyDepthMode()
+        {
+            overlayMaterial.SetInt(
+                "_ZTest",
+                NavigationHighlightSettings.Depth == NavigationPreviewDepth.XRay
+                    ? (int)CompareFunction.Always
+                    : (int)CompareFunction.LessEqual);
         }
 
         private static void CollectSources()
         {
             ActiveArtifacts.Clear();
             ActiveLevels.Clear();
+            ActiveSources.Clear();
+
+            CollectScopedLevels();
 
             NavigationQuerySchedulerBehaviour[] schedulers =
                 Object.FindObjectsByType<NavigationQuerySchedulerBehaviour>(
@@ -230,16 +342,16 @@ namespace CustomNavigation.Editor
                     FindObjectsSortMode.None);
             for (int i = 0; i < schedulers.Length; i++)
             {
-                AddArtifact(schedulers[i].Artifact);
+                if (IsInScope(schedulers[i].transform))
+                {
+                    AddArtifact(schedulers[i].Artifact);
+                }
             }
 
-            NavigationLevel[] levels = Object.FindObjectsByType<NavigationLevel>(
-                FindObjectsInactive.Include,
-                FindObjectsSortMode.None);
-            for (int i = 0; i < levels.Length; i++)
+            for (int i = 0; i < ActiveLevels.Count; i++)
             {
-                ActiveLevels.Add(levels[i]);
-                string levelId = levels[i].LevelId;
+                NavigationLevel level = ActiveLevels[i];
+                string levelId = level.LevelId;
                 if (string.IsNullOrEmpty(levelId))
                 {
                     continue;
@@ -247,6 +359,199 @@ namespace CustomNavigation.Editor
 
                 AddArtifact(AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
                     $"{NavigationArtifactBuilder.GeneratedClientFolder}/{levelId}.artifact.asset"));
+
+            }
+
+            NavigationGeometrySource[] allSources = Object.FindObjectsByType<NavigationGeometrySource>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < allSources.Length; i++)
+            {
+                if (IsInScope(allSources[i].transform))
+                {
+                    ActiveSources.Add(allSources[i]);
+                }
+            }
+        }
+
+        private static void CollectScopedLevels()
+        {
+            NavigationLevel[] levels = Object.FindObjectsByType<NavigationLevel>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            NavigationPreviewScope scope = NavigationHighlightSettings.Scope;
+            if (scope == NavigationPreviewScope.AllLoadedLevels)
+            {
+                ActiveLevels.AddRange(levels);
+                return;
+            }
+
+            NavigationLevel selected = Selection.activeGameObject != null
+                ? Selection.activeGameObject.GetComponentInParent<NavigationLevel>()
+                : null;
+            if (selected != null)
+            {
+                ActiveLevels.Add(selected);
+                return;
+            }
+
+            if (scope == NavigationPreviewScope.Selection)
+            {
+                return;
+            }
+
+            Scene activeScene = SceneManager.GetActiveScene();
+            for (int i = 0; i < levels.Length; i++)
+            {
+                if (levels[i].gameObject.scene == activeScene)
+                {
+                    ActiveLevels.Add(levels[i]);
+                    return;
+                }
+            }
+        }
+
+        private static bool IsInScope(Transform candidate)
+        {
+            if (NavigationHighlightSettings.Scope == NavigationPreviewScope.AllLoadedLevels)
+            {
+                return true;
+            }
+
+            for (int i = 0; i < ActiveLevels.Count; i++)
+            {
+                if (candidate == ActiveLevels[i].transform || candidate.IsChildOf(ActiveLevels[i].transform))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void DrawSources()
+        {
+            Color previous = Handles.color;
+            CompareFunction previousDepth = Handles.zTest;
+            Handles.zTest = NavigationHighlightSettings.Depth == NavigationPreviewDepth.XRay
+                ? CompareFunction.Always
+                : CompareFunction.LessEqual;
+            for (int i = 0; i < ActiveSources.Count; i++)
+            {
+                NavigationGeometrySource source = ActiveSources[i];
+                if (source == null)
+                {
+                    continue;
+                }
+
+                source.CollectMeshFilters(SourceMeshes);
+                Handles.color = NavigationHighlightPalette.ForGeometryMode(source.Mode);
+                for (int meshIndex = 0; meshIndex < SourceMeshes.Count; meshIndex++)
+                {
+                    MeshFilter filter = SourceMeshes[meshIndex];
+                    DrawDottedBounds(filter.transform.localToWorldMatrix, filter.sharedMesh.bounds);
+                }
+            }
+
+            Handles.color = previous;
+            Handles.zTest = previousDepth;
+        }
+
+        private static void DrawDottedBounds(Matrix4x4 matrix, Bounds bounds)
+        {
+            Vector3 min = bounds.min;
+            Vector3 max = bounds.max;
+            Vector3[] points =
+            {
+                matrix.MultiplyPoint3x4(new Vector3(min.x, min.y, min.z)),
+                matrix.MultiplyPoint3x4(new Vector3(max.x, min.y, min.z)),
+                matrix.MultiplyPoint3x4(new Vector3(max.x, min.y, max.z)),
+                matrix.MultiplyPoint3x4(new Vector3(min.x, min.y, max.z)),
+                matrix.MultiplyPoint3x4(new Vector3(min.x, max.y, min.z)),
+                matrix.MultiplyPoint3x4(new Vector3(max.x, max.y, min.z)),
+                matrix.MultiplyPoint3x4(new Vector3(max.x, max.y, max.z)),
+                matrix.MultiplyPoint3x4(new Vector3(min.x, max.y, max.z))
+            };
+            int[] pairs = { 0,1, 1,2, 2,3, 3,0, 4,5, 5,6, 6,7, 7,4, 0,4, 1,5, 2,6, 3,7 };
+            for (int i = 0; i < pairs.Length; i += 2)
+            {
+                Handles.DrawDottedLine(points[pairs[i]], points[pairs[i + 1]], 5f);
+            }
+        }
+
+        internal static NavigationLevel GetPrimaryLevel()
+        {
+            if (sourcesDirty)
+            {
+                ScheduleRefresh();
+            }
+
+            return ActiveLevels.Count > 0 ? ActiveLevels[0] : null;
+        }
+
+        internal static string GetStatusText()
+        {
+            NavigationLevel level = GetPrimaryLevel();
+            if (level == null)
+            {
+                return NavigationHighlightSettings.Scope == NavigationPreviewScope.Selection
+                    ? "Select a Navigation Level"
+                    : "No Navigation Level";
+            }
+
+            NavigationArtifactAsset artifact = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
+                $"{NavigationArtifactBuilder.GeneratedClientFolder}/{level.LevelId}.artifact.asset");
+            if (artifact == null)
+            {
+                return "Not baked";
+            }
+
+            if (artifact.NavigationData == null)
+            {
+                return "Baked data missing · source meshes are not used as a fallback";
+            }
+
+            int currentSourceCount = 0;
+            for (int i = 0; i < ActiveSources.Count; i++)
+            {
+                ActiveSources[i].CollectMeshFilters(SourceMeshes);
+                currentSourceCount += SourceMeshes.Count;
+            }
+
+            if (artifact.SourceMeshCount != currentSourceCount)
+            {
+                return $"Out of date · sources {artifact.SourceMeshCount} → {currentSourceCount}";
+            }
+
+            if (level.gameObject.scene.isDirty)
+            {
+                return "Out of date · scene has unsaved changes";
+            }
+
+            string scenePath = level.gameObject.scene.path;
+            string artifactPath = AssetDatabase.GetAssetPath(artifact);
+            if (!string.IsNullOrEmpty(scenePath)
+                && File.Exists(scenePath)
+                && File.Exists(artifactPath)
+                && File.GetLastWriteTimeUtc(scenePath) > File.GetLastWriteTimeUtc(artifactPath))
+            {
+                return "Out of date · scene changed after the last bake";
+            }
+
+            if (NavigationHighlightSettings.RuntimeEnabled && !NavigationSceneTools.HasRuntimeData)
+            {
+                return "No runtime data";
+            }
+
+            return $"Baked · {artifact.PolygonCount} polygons";
+        }
+
+        internal static void FramePrimaryLevel()
+        {
+            NavigationLevel level = GetPrimaryLevel();
+            if (level != null && level.TryGetGeometryBounds(out Bounds bounds))
+            {
+                SceneView.lastActiveSceneView?.Frame(bounds, false);
             }
         }
 
@@ -492,9 +797,11 @@ namespace CustomNavigation.Editor
 
         private static Color GetAreaColor(int areaId)
         {
-            return AreaColors.TryGetValue(areaId, out Color color)
-                ? color
-                : NavigationHighlightPalette.NavigationMeshFallback;
+            float variation = Mathf.Abs(areaId % 5) / 8f;
+            return Color.Lerp(
+                NavigationHighlightPalette.Baked,
+                NavigationHighlightPalette.Runtime,
+                variation);
         }
     }
 

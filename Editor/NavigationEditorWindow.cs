@@ -1427,11 +1427,13 @@ namespace CustomNavigation.Editor
             if (!NavigationHighlightSettings.Enabled)
             {
                 EditorGUILayout.HelpBox(
-                    "Navigation Highlight is off - the Scene View will show nothing.",
+                    "Custom Navigation preview layers are off. Configure them in the Scene View " +
+                    "overlay or personal Scene Preview preferences.",
                     MessageType.Warning);
-                if (GUILayout.Button("Enable Navigation Highlight"))
+                if (GUILayout.Button("Open Scene Preview Preferences"))
                 {
-                    NavigationHighlightSettings.Enabled = true;
+                    SettingsService.OpenUserPreferences(
+                        NavigationProjectSettings.PreferencesProviderPath);
                 }
             }
 
