@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using CustomNavigation.Authoring;
@@ -52,7 +53,10 @@ namespace CustomNavigation.Editor.Tests
             string[] assetsBefore = AssetDatabase.GetAllAssetPaths();
 
             NavigationEditorWindow.Open();
-            EditorWindow.GetWindow<NavigationEditorWindow>().Close();
+            NavigationEditorWindow window = EditorWindow.GetWindow<NavigationEditorWindow>();
+            Assert.That(window.titleContent.text, Is.EqualTo(NavigationEditorWindow.WindowTitle));
+            Assert.That(NavigationEditorWindow.WindowTitle, Is.EqualTo("DS Navigation"));
+            window.Close();
 
             Assert.That(scene.isDirty, Is.False);
             Assert.That(AssetDatabase.GetAllAssetPaths(), Is.EqualTo(assetsBefore));
@@ -99,6 +103,64 @@ namespace CustomNavigation.Editor.Tests
             Assert.That(
                 methods.SelectMany(method => method.GetCustomAttributes(typeof(MenuItem), false)),
                 Is.Empty);
+        }
+
+        [Test]
+        public void DeleteClientArtifactRemovesOnlyItsGeneratedProjectFiles()
+        {
+            const string levelId = "ux-delete-test";
+            const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+            string folder = NavigationArtifactBuilder.GeneratedClientFolder;
+            string stem = levelId + "." + hash.Substring(0, 12);
+            string payloadPath = $"{folder}/{stem}.navmesh.bytes";
+            string manifestPath = $"{folder}/{stem}.manifest.json";
+            string artifactPath = $"{folder}/{levelId}.artifact.asset";
+
+            try
+            {
+                EnsureAssetFolder(folder);
+                File.WriteAllBytes(payloadPath, new byte[] { 1, 2, 3 });
+                File.WriteAllText(manifestPath, "{}");
+                AssetDatabase.ImportAsset(payloadPath, ImportAssetOptions.ForceSynchronousImport);
+                AssetDatabase.ImportAsset(manifestPath, ImportAssetOptions.ForceSynchronousImport);
+
+                TextAsset payload = AssetDatabase.LoadAssetAtPath<TextAsset>(payloadPath);
+                var artifact = ScriptableObject.CreateInstance<NavigationArtifactAsset>();
+                artifact.Configure(levelId, hash, "1", "test", "agent", 1, 1, payload, "{}");
+                AssetDatabase.CreateAsset(artifact, artifactPath);
+
+                Assert.That(
+                    NavigationArtifactBuilder.GetClientArtifactPaths(artifact),
+                    Is.EquivalentTo(new[] { artifactPath, payloadPath, manifestPath }));
+
+                NavigationArtifactBuilder.DeleteClientArtifact(artifact);
+
+                Assert.That(AssetDatabase.LoadMainAssetAtPath(artifactPath), Is.Null);
+                Assert.That(AssetDatabase.LoadMainAssetAtPath(payloadPath), Is.Null);
+                Assert.That(AssetDatabase.LoadMainAssetAtPath(manifestPath), Is.Null);
+            }
+            finally
+            {
+                AssetDatabase.DeleteAsset(artifactPath);
+                AssetDatabase.DeleteAsset(payloadPath);
+                AssetDatabase.DeleteAsset(manifestPath);
+            }
+        }
+
+        private static void EnsureAssetFolder(string folder)
+        {
+            string[] segments = folder.Split('/');
+            string current = segments[0];
+            for (int i = 1; i < segments.Length; i++)
+            {
+                string next = current + "/" + segments[i];
+                if (!AssetDatabase.IsValidFolder(next))
+                {
+                    AssetDatabase.CreateFolder(current, segments[i]);
+                }
+
+                current = next;
+            }
         }
     }
 }

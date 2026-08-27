@@ -481,6 +481,88 @@ namespace CustomNavigation.Editor
                 $"{GeneratedClientFolder}/{safeLevelId}.artifact.asset");
         }
 
+        /// <summary>
+        /// Returns the generated project files owned by one client artifact. Server exports are
+        /// deliberately excluded: removing a local bake must not mutate a running server.
+        /// </summary>
+        public static IReadOnlyList<string> GetClientArtifactPaths(NavigationArtifactAsset artifact)
+        {
+            if (artifact == null)
+            {
+                throw new ArgumentNullException(nameof(artifact));
+            }
+
+            var paths = new List<string>(3);
+            AddGeneratedClientPath(paths, AssetDatabase.GetAssetPath(artifact), "artifact asset");
+
+            string payloadPath = artifact.NavigationData != null
+                ? AssetDatabase.GetAssetPath(artifact.NavigationData)
+                : string.Empty;
+            AddGeneratedClientPath(paths, payloadPath, "navigation payload", allowMissing: true);
+
+            if (!string.IsNullOrEmpty(payloadPath))
+            {
+                const string payloadSuffix = ".navmesh.bytes";
+                if (!payloadPath.EndsWith(payloadSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"Navigation payload '{payloadPath}' does not use the expected '{payloadSuffix}' suffix.");
+                }
+
+                string manifestPath = payloadPath.Substring(0, payloadPath.Length - payloadSuffix.Length)
+                    + ".manifest.json";
+                AddGeneratedClientPath(paths, manifestPath, "navigation manifest", allowMissing: true);
+            }
+
+            return paths;
+        }
+
+        /// <summary>Deletes only the selected client artifact and its generated payload files.</summary>
+        public static void DeleteClientArtifact(NavigationArtifactAsset artifact)
+        {
+            IReadOnlyList<string> paths = GetClientArtifactPaths(artifact);
+            for (int i = paths.Count - 1; i >= 0; i--)
+            {
+                string path = paths[i];
+                if (AssetDatabase.LoadMainAssetAtPath(path) != null && !AssetDatabase.DeleteAsset(path))
+                {
+                    throw new IOException($"Unity could not delete generated navigation file '{path}'.");
+                }
+            }
+
+            AssetDatabase.Refresh();
+        }
+
+        private static void AddGeneratedClientPath(
+            ICollection<string> paths,
+            string path,
+            string description,
+            bool allowMissing = false)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                if (allowMissing)
+                {
+                    return;
+                }
+
+                throw new InvalidOperationException($"The {description} is not stored in the project.");
+            }
+
+            string normalized = path.Replace('\\', '/');
+            string prefix = GeneratedClientFolder.TrimEnd('/') + "/";
+            if (!normalized.StartsWith(prefix, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Refusing to delete {description} outside '{GeneratedClientFolder}': {normalized}");
+            }
+
+            if (!paths.Contains(normalized))
+            {
+                paths.Add(normalized);
+            }
+        }
+
         /// <summary>Absolute path to the server NavigationData folder (configured in NavigationServerSettings).</summary>
         public static string ResolveServerFolder()
         {

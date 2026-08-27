@@ -4,6 +4,22 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.8] - 2026-08-27
+
+### Added
+- Added an explicit `Remove baked navigation` action to the Bake section. Its confirmation
+  dialog lists the generated artifact, payload, and manifest files before deleting them;
+  server copies are deliberately left unchanged.
+- Refused artifact deletion when any selected file is outside the package-owned
+  `Assets/DataSakura/CustomNavigation/Generated/Navigation` folder.
+
+### Changed
+- Renamed the authoring window dock title to `DS Navigation` to distinguish it from Unity's
+  built-in Navigation window and restore the title after editor domain reloads.
+
+### Tests
+- Added EditMode coverage for the dock title and deletion of the generated artifact triplet.
+
 ## [0.6.7] - 2026-08-27
 
 ### Changed

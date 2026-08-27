@@ -30,7 +30,7 @@ namespace CustomNavigation.Editor.Tests
             PackageManifest manifest = JsonUtility.FromJson<PackageManifest>(json);
 
             Assert.That(manifest.name, Is.EqualTo("com.datasakura.custom-navigation"));
-            Assert.That(manifest.version, Is.EqualTo("0.6.7"));
+            Assert.That(manifest.version, Is.EqualTo("0.6.8"));
             Assert.That(manifest.displayName, Is.EqualTo("DataSakura Custom Navigation"));
             Assert.That(manifest.samples, Has.Length.EqualTo(1));
             Assert.That(manifest.samples[0].displayName, Is.EqualTo("Navigation Demos & Bots"));

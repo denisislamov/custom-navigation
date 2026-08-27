@@ -74,12 +74,13 @@ namespace CustomNavigation.Editor
         private List<NavigationArtifactComparison> artifactComparisons;
 
         internal const string MainMenuPath = "Tools/DataSakura/Custom Navigation";
+        internal const string WindowTitle = "DS Navigation";
 
         [MenuItem(MainMenuPath, priority = 100)]
         public static void Open()
         {
             var window = GetWindow<NavigationEditorWindow>();
-            window.titleContent = new GUIContent("Navigation");
+            window.titleContent = new GUIContent(WindowTitle);
             window.minSize = new Vector2(460f, 420f);
             window.Show();
         }
@@ -100,6 +101,7 @@ namespace CustomNavigation.Editor
 
         private void OnEnable()
         {
+            titleContent = new GUIContent(WindowTitle);
             Selection.selectionChanged += OnSelectionChanged;
             serverRequestPending = false;
             probeRequestPending = false;
@@ -612,6 +614,13 @@ namespace CustomNavigation.Editor
                     "Client artifact",
                     $"{builtArtifact.LevelId} · {NavigationArtifactIndex.Short(builtArtifact.ArtifactHash)} · " +
                     $"{builtArtifact.PolygonCount} polygons");
+
+                EditorGUILayout.Space(8f);
+                EditorGUILayout.LabelField("Danger zone", EditorStyles.boldLabel);
+                if (GUILayout.Button("Remove baked navigation"))
+                {
+                    RemoveBakedNavigation(builtArtifact);
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(lastBuildMessage))
@@ -623,6 +632,49 @@ namespace CustomNavigation.Editor
             {
                 EditorGUILayout.HelpBox(lastExportMessage, MessageType.Info);
                 DrawPostExportActions();
+            }
+        }
+
+        private void RemoveBakedNavigation(NavigationArtifactAsset artifact)
+        {
+            IReadOnlyList<string> files;
+            try
+            {
+                files = NavigationArtifactBuilder.GetClientArtifactPaths(artifact);
+            }
+            catch (Exception exception)
+            {
+                lastBuildMessage = "Cannot remove baked navigation: " + exception.Message;
+                Debug.LogException(exception);
+                return;
+            }
+
+            string message =
+                "Delete the generated navigation files for this level?\n\n" +
+                string.Join("\n", files) +
+                "\n\nServer copies are not deleted.";
+            if (!EditorUtility.DisplayDialog(
+                    "Remove baked navigation",
+                    message,
+                    "Delete files",
+                    "Cancel"))
+            {
+                return;
+            }
+
+            try
+            {
+                NavigationArtifactBuilder.DeleteClientArtifact(artifact);
+                lastBuildMessage = "Baked navigation files were deleted. Server copies were left unchanged.";
+                lastExportMessage = string.Empty;
+                exportedManifestPath = string.Empty;
+                exportedHash = string.Empty;
+                artifactComparisons = null;
+            }
+            catch (Exception exception)
+            {
+                lastBuildMessage = "Could not delete baked navigation: " + exception.Message;
+                Debug.LogException(exception);
             }
         }
 
