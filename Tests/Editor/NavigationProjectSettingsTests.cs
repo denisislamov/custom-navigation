@@ -309,6 +309,23 @@ namespace CustomNavigation.Editor.Tests
                 NavigationArtifactBuildResult baseline =
                     NavigationArtifactBuilder.BuildForClient(level);
                 artifact = baseline.Asset;
+                string payloadGuid = AssetDatabase.AssetPathToGUID(baseline.ClientDataPath);
+                string manifestGuid = AssetDatabase.AssetPathToGUID(baseline.ClientManifestPath);
+                string artifactGuid = AssetDatabase.AssetPathToGUID(
+                    AssetDatabase.GetAssetPath(baseline.Asset));
+
+                Assert.That(baseline.ClientDataPath,
+                    Is.EqualTo(NavigationArtifactBuilder.GetClientDataPath(level.LevelId)));
+                Assert.That(baseline.ClientManifestPath,
+                    Is.EqualTo(NavigationArtifactBuilder.GetClientManifestPath(level.LevelId)));
+                Assert.That(AssetDatabase.GetAssetPath(baseline.Asset),
+                    Is.EqualTo(NavigationArtifactBuilder.GetClientAssetPath(level.LevelId)));
+
+                levelObject.Update();
+                levelObject.FindProperty("description").stringValue = "Display-only CN-05 label";
+                levelObject.ApplyModifiedPropertiesWithoutUndo();
+                NavigationArtifactBuildResult displayChanged =
+                    NavigationArtifactBuilder.BuildForClient(level);
 
                 var budgetObject = new SerializedObject(originalBudget);
                 budgetObject.Update();
@@ -324,10 +341,18 @@ namespace CustomNavigation.Editor.Tests
                 NavigationArtifactBuildResult replacement =
                     NavigationArtifactBuilder.BuildForClient(level);
 
+                Assert.That(displayChanged.Hash, Is.EqualTo(baseline.Hash));
+                Assert.That(displayChanged.Data, Is.EqualTo(baseline.Data));
                 Assert.That(changedBudget.Hash, Is.EqualTo(baseline.Hash));
                 Assert.That(changedBudget.Data, Is.EqualTo(baseline.Data));
                 Assert.That(replacement.Hash, Is.EqualTo(baseline.Hash));
                 Assert.That(replacement.Data, Is.EqualTo(baseline.Data));
+                Assert.That(AssetDatabase.AssetPathToGUID(replacement.ClientDataPath),
+                    Is.EqualTo(payloadGuid));
+                Assert.That(AssetDatabase.AssetPathToGUID(replacement.ClientManifestPath),
+                    Is.EqualTo(manifestGuid));
+                Assert.That(AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(replacement.Asset)),
+                    Is.EqualTo(artifactGuid));
             }
             finally
             {

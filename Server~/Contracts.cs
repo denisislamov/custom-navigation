@@ -75,7 +75,7 @@ public sealed class ArtifactUploadRequest
     /// <summary>The manifest exactly as Unity wrote it, so hashes stay byte-identical.</summary>
     public string? ManifestJson { get; init; }
 
-    /// <summary>Base64 of the .navmesh.bytes payload.</summary>
+    /// <summary>Base64 of the .navigation.bytes payload (legacy .navmesh.bytes is accepted).</summary>
     public string? DataBase64 { get; init; }
 
     /// <summary>Make this the map served when a request carries no levelId.</summary>
@@ -89,4 +89,3 @@ public sealed record ArtifactUploadResponse(
     string FileName,
     bool SetActive,
     string Message);
-

@@ -4,6 +4,26 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.13] - 2026-08-28
+
+### Added
+- Added a build summary with Ready/Changed/Invalid state, payload size, polygon/source counts,
+  optional description and file UTC, Project/Finder actions, and copyable full diagnostics.
+- Added an explicit, idempotent artifact filename migration that uses `AssetDatabase.MoveAsset`
+  to preserve payload/manifest/asset GUIDs and serialized references.
+
+### Changed
+- New client and server exports use `<levelId>.navigation.bytes`,
+  `<levelId>.navigation.manifest.json`, and `<levelId>.navigation.asset` inside the existing
+  generated root. Full SHA-256 remains in the manifest and Details, not the normal filename.
+- Client and server readers continue accepting legacy hash-based `.navmesh.bytes` artifacts.
+  Folder export and HTTP upload now stage and roll back the complete payload/manifest/active set
+  when a write fails.
+
+### Tests
+- Added current/legacy naming, GUID/reference/byte-preserving repeated migration, corruption,
+  duplicate level ID, per-level path isolation, and incomplete-export rollback coverage.
+
 ## [0.6.12] - 2026-08-27
 
 ### Changed

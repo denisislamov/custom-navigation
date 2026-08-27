@@ -33,6 +33,7 @@ namespace CustomNavigation.Editor
         [SerializeField] private int selectedTab;
         [SerializeField] private Vector2 scrollPosition;
         [SerializeField] private bool showSourceDetails = true;
+        [SerializeField] private bool showArtifactDetails;
         [SerializeField] private string lastBuildMessage;
         [SerializeField] private string lastExportMessage;
         [SerializeField] private string serverAddressInput = string.Empty;
@@ -72,6 +73,8 @@ namespace CustomNavigation.Editor
         private Action pendingAction;
 
         private List<NavigationArtifactComparison> artifactComparisons;
+        private string artifactValidationKey = string.Empty;
+        private string artifactValidationError = string.Empty;
 
         internal const string MainMenuPath = "Tools/DataSakura/Custom Navigation Window";
         internal const string WindowTitle = "DS Navigation";
@@ -219,6 +222,8 @@ namespace CustomNavigation.Editor
             DrawArtifacts();
             EditorGUILayout.Space(12f);
             DrawLayoutMigration();
+            EditorGUILayout.Space(12f);
+            DrawArtifactFilenameMigration();
         }
 
         private static void DrawLayoutMigration()
@@ -247,6 +252,46 @@ namespace CustomNavigation.Editor
             }
 
             CustomNavigationLayoutMigrationResult result = CustomNavigationLayoutMigration.Migrate();
+            string report = string.Join("\n", result.Messages);
+            if (result.Succeeded)
+            {
+                Debug.Log("[CustomNavigation] " + report);
+            }
+            else
+            {
+                Debug.LogError("[CustomNavigation] " + report);
+            }
+        }
+
+        private static void DrawArtifactFilenameMigration()
+        {
+            EditorGUILayout.LabelField("Artifact filename migration", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Explicitly moves legacy hash-based generated files to " +
+                "<levelId>.navigation.bytes, <levelId>.navigation.manifest.json, and " +
+                "<levelId>.navigation.asset. Unity GUIDs, payload bytes, references, schema, and " +
+                "full SHA-256 verification are preserved. Re-running is a no-op.",
+                MessageType.None);
+
+            if (!GUILayout.Button("Preview / Run Artifact Filename Migration", GUILayout.Height(26f)))
+            {
+                return;
+            }
+
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Navigation artifact filename migration",
+                "Move generated navigation artifacts to stable level-based filenames?\n\n" +
+                "The generated root stays unchanged. The migration refuses destination conflicts " +
+                "and corrupted payloads before moving anything.",
+                "Run Migration",
+                "Cancel");
+            if (!confirmed)
+            {
+                return;
+            }
+
+            NavigationArtifactFilenameMigrationResult result =
+                NavigationArtifactFilenameMigration.Migrate();
             string report = string.Join("\n", result.Messages);
             if (result.Succeeded)
             {
@@ -749,10 +794,7 @@ namespace CustomNavigation.Editor
             }
             else
             {
-                EditorGUILayout.LabelField(
-                    "Client artifact",
-                    $"{builtArtifact.LevelId} · {NavigationArtifactIndex.Short(builtArtifact.ArtifactHash)} · " +
-                    $"{builtArtifact.PolygonCount} polygons");
+                DrawArtifactBuildSummary(builtArtifact);
 
                 EditorGUILayout.Space(8f);
                 EditorGUILayout.LabelField("Danger zone", EditorStyles.boldLabel);
@@ -772,6 +814,243 @@ namespace CustomNavigation.Editor
                 EditorGUILayout.HelpBox(lastExportMessage, MessageType.Info);
                 DrawPostExportActions();
             }
+        }
+
+        private void DrawArtifactBuildSummary(NavigationArtifactAsset artifact)
+        {
+            string state = DescribeArtifactBuildState(artifact, out string reason);
+            int byteSize = artifact.NavigationData != null ? artifact.NavigationData.bytes.Length : 0;
+            string assetPath = AssetDatabase.GetAssetPath(artifact);
+            string builtUtc = string.Empty;
+            string absoluteAssetPath = ToAbsoluteProjectPath(assetPath);
+            if (!string.IsNullOrEmpty(absoluteAssetPath) && File.Exists(absoluteAssetPath))
+            {
+                builtUtc = File.GetLastWriteTimeUtc(absoluteAssetPath).ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+            }
+
+            EditorGUILayout.LabelField("Build summary", EditorStyles.boldLabel);
+            using (new EditorGUILayout.VerticalScope(EditorStyles.helpBox))
+            {
+                DrawSummaryRow("Level", artifact.LevelId);
+                DrawSummaryRow("Status", state + (string.IsNullOrEmpty(reason) ? string.Empty : " · " + reason));
+                DrawSummaryRow("Size", $"{byteSize / 1024f:0.#} KB ({byteSize} bytes)");
+                DrawSummaryRow("Contents", $"{artifact.PolygonCount} polygons · {artifact.SourceMeshCount} sources");
+                if (!string.IsNullOrWhiteSpace(selectedLevel.Description))
+                {
+                    DrawSummaryRow("Label", selectedLevel.Description);
+                }
+
+                if (!string.IsNullOrEmpty(builtUtc))
+                {
+                    DrawSummaryRow("File UTC", builtUtc);
+                }
+            }
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                if (GUILayout.Button("Show in Project", EditorStyles.miniButton))
+                {
+                    Selection.activeObject = artifact;
+                    EditorGUIUtility.PingObject(artifact);
+                }
+
+                if (GUILayout.Button("Reveal in Finder", EditorStyles.miniButton))
+                {
+                    EditorUtility.RevealInFinder(absoluteAssetPath);
+                }
+
+                if (GUILayout.Button("Copy Diagnostics", EditorStyles.miniButton))
+                {
+                    EditorGUIUtility.systemCopyBuffer = BuildArtifactDiagnostics(artifact, state, reason);
+                    lastBuildMessage = "Full artifact diagnostics copied to the clipboard.";
+                }
+            }
+
+            showArtifactDetails = EditorGUILayout.Foldout(showArtifactDetails, "Details", true);
+            if (showArtifactDetails)
+            {
+                using (new EditorGUI.IndentLevelScope())
+                {
+                    EditorGUILayout.SelectableLabel(
+                        "SHA-256: " + artifact.ArtifactHash,
+                        EditorStyles.wordWrappedMiniLabel,
+                        GUILayout.MinHeight(32f));
+                    EditorGUILayout.LabelField("Schema", artifact.SchemaVersion);
+                    EditorGUILayout.LabelField("DotRecast", artifact.DotRecastVersion);
+                    EditorGUILayout.LabelField("Agent profile", artifact.AgentProfileId);
+                    EditorGUILayout.LabelField("Payload", artifact.NavigationData != null
+                        ? AssetDatabase.GetAssetPath(artifact.NavigationData)
+                        : "Missing");
+                    EditorGUILayout.LabelField("Manifest",
+                        NavigationArtifactBuilder.GetClientManifestPath(artifact));
+                }
+            }
+        }
+
+        private string DescribeArtifactBuildState(
+            NavigationArtifactAsset artifact,
+            out string reason)
+        {
+            if (validationReport.Evaluated && validationReport.HasErrors)
+            {
+                reason = validationReport.DescribeFirstError();
+                return "Invalid";
+            }
+
+            if (artifact.NavigationData == null
+                || string.IsNullOrWhiteSpace(artifact.ManifestJson)
+                || string.IsNullOrWhiteSpace(artifact.ArtifactHash)
+                || !string.Equals(artifact.SchemaVersion, NavigationArtifactBuilder.SchemaVersion,
+                    StringComparison.Ordinal))
+            {
+                reason = "artifact metadata or payload is missing";
+                return "Invalid";
+            }
+
+            if (!ValidateArtifactCached(artifact, out string payloadError))
+            {
+                reason = payloadError;
+                return "Invalid";
+            }
+
+            int currentSources = CountCurrentSourceMeshes(selectedLevel);
+            if (currentSources != artifact.SourceMeshCount)
+            {
+                reason = $"source count changed: {artifact.SourceMeshCount} → {currentSources}";
+                return "Changed";
+            }
+
+            if (selectedLevel.gameObject.scene.isDirty)
+            {
+                reason = "scene has unsaved changes";
+                return "Changed";
+            }
+
+            string scenePath = selectedLevel.gameObject.scene.path;
+            string assetPath = ToAbsoluteProjectPath(AssetDatabase.GetAssetPath(artifact));
+            if (!string.IsNullOrEmpty(scenePath)
+                && File.Exists(scenePath)
+                && File.Exists(assetPath)
+                && File.GetLastWriteTimeUtc(scenePath) > File.GetLastWriteTimeUtc(assetPath))
+            {
+                reason = "scene changed after build";
+                return "Changed";
+            }
+
+            reason = string.Empty;
+            return "Ready";
+        }
+
+        private bool ValidateArtifactCached(
+            NavigationArtifactAsset artifact,
+            out string error)
+        {
+            string payloadPath = artifact.NavigationData != null
+                ? AssetDatabase.GetAssetPath(artifact.NavigationData)
+                : string.Empty;
+            string absolutePayloadPath = ToAbsoluteProjectPath(payloadPath);
+            long length = File.Exists(absolutePayloadPath) ? new FileInfo(absolutePayloadPath).Length : -1L;
+            long writeTicks = File.Exists(absolutePayloadPath)
+                ? File.GetLastWriteTimeUtc(absolutePayloadPath).Ticks
+                : 0L;
+            string key = $"{artifact.GetInstanceID()}|{artifact.ArtifactHash}|" +
+                         $"{artifact.ManifestJson.GetHashCode()}|{payloadPath}|" +
+                         $"{length}|{writeTicks}";
+            if (!string.Equals(key, artifactValidationKey, StringComparison.Ordinal))
+            {
+                artifactValidationKey = key;
+                try
+                {
+                    NavigationArtifactLoader.Load(artifact);
+                    artifactValidationError = NavigationArtifactBuilder.TryValidateManifest(
+                        artifact,
+                        out string manifestError)
+                        ? string.Empty
+                        : "Manifest: " + manifestError;
+                }
+                catch (Exception exception)
+                {
+                    artifactValidationError = exception.Message;
+                }
+            }
+
+            error = artifactValidationError;
+            return string.IsNullOrEmpty(error);
+        }
+
+        private static string BuildArtifactDiagnostics(
+            NavigationArtifactAsset artifact,
+            string state,
+            string reason)
+        {
+            string validation;
+            try
+            {
+                NavigationArtifactInstance loaded = NavigationArtifactLoader.Load(artifact);
+                validation = $"valid; loadedPolygons={loaded.PolygonCount}";
+            }
+            catch (Exception exception)
+            {
+                validation = "INVALID: " + exception.Message;
+            }
+
+            return
+                "Custom Navigation build diagnostics\n" +
+                $"levelId={artifact.LevelId}\n" +
+                $"status={state}{(string.IsNullOrEmpty(reason) ? string.Empty : "; " + reason)}\n" +
+                $"asset={AssetDatabase.GetAssetPath(artifact)}\n" +
+                $"payload={(artifact.NavigationData != null ? AssetDatabase.GetAssetPath(artifact.NavigationData) : "missing")}\n" +
+                $"manifest={NavigationArtifactBuilder.GetClientManifestPath(artifact)}\n" +
+                $"sha256={artifact.ArtifactHash}\n" +
+                $"schema={artifact.SchemaVersion}\n" +
+                $"dotRecast={artifact.DotRecastVersion}\n" +
+                $"agentProfile={artifact.AgentProfileId}\n" +
+                $"polygons={artifact.PolygonCount}\n" +
+                $"sources={artifact.SourceMeshCount}\n" +
+                $"payloadValidation={validation}";
+        }
+
+        private static int CountCurrentSourceMeshes(NavigationLevel level)
+        {
+            var meshes = new HashSet<MeshFilter>();
+            NavigationGeometrySource[] sources = level.GeometryRoot
+                .GetComponentsInChildren<NavigationGeometrySource>(true);
+            for (int i = 0; i < sources.Length; i++)
+            {
+                NavigationGeometrySource source = sources[i];
+                if (source.Mode != NavigationGeometryMode.Include)
+                {
+                    continue;
+                }
+
+                MeshFilter[] candidates = source.IncludeChildren
+                    ? source.GetComponentsInChildren<MeshFilter>(source.IncludeInactiveChildren)
+                    : source.TryGetComponent(out MeshFilter ownMesh)
+                        ? new[] { ownMesh }
+                        : Array.Empty<MeshFilter>();
+                for (int meshIndex = 0; meshIndex < candidates.Length; meshIndex++)
+                {
+                    if (candidates[meshIndex] != null && candidates[meshIndex].sharedMesh != null)
+                    {
+                        meshes.Add(candidates[meshIndex]);
+                    }
+                }
+            }
+
+            return meshes.Count;
+        }
+
+        private static string ToAbsoluteProjectPath(string assetPath)
+        {
+            if (string.IsNullOrWhiteSpace(assetPath))
+            {
+                return string.Empty;
+            }
+
+            string projectRoot = Directory.GetParent(Application.dataPath)?.FullName;
+            return string.IsNullOrEmpty(projectRoot)
+                ? string.Empty
+                : Path.GetFullPath(Path.Combine(projectRoot, assetPath));
         }
 
         private void RemoveBakedNavigation(NavigationArtifactAsset artifact)
@@ -962,7 +1241,6 @@ namespace CustomNavigation.Editor
                 $"Build finished in {result.ElapsedSeconds:0.0} s\n" +
                 $"Polygons: {result.PolygonCount}   ·   Sources: {result.SourceMeshCount}   ·   " +
                 $"Size: {result.ByteSize / 1024f:0.#} KB\n" +
-                $"Hash: {NavigationArtifactIndex.Short(result.Hash)}\n" +
                 result.ClientDataPath;
         }
 

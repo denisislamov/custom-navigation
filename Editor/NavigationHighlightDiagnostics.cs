@@ -87,8 +87,11 @@ namespace CustomNavigation.Editor
             for (int i = 0; i < levels.Length; i++)
             {
                 string levelId = levels[i].LevelId;
-                string path = $"{NavigationArtifactBuilder.GeneratedClientFolder}/{levelId}.artifact.asset";
-                bool exists = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(path) != null;
+                NavigationArtifactAsset artifact = NavigationArtifactBuilder.LoadClientArtifact(levelId);
+                string path = artifact != null
+                    ? AssetDatabase.GetAssetPath(artifact)
+                    : NavigationArtifactBuilder.GetClientAssetPath(levelId);
+                bool exists = artifact != null;
                 report.AppendLine(
                     $"- Level '{levelId}' -> '{path}' {(exists ? "found" : "MISSING")}");
                 if (!exists)

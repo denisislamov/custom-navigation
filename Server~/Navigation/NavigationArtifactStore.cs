@@ -11,6 +11,9 @@ public static class NavigationArtifactStore
     public const string SupportedSchemaVersion = "1";
     public const string SupportedDotRecastVersion = "2026.1.3";
     public const string ActiveManifestFileName = "active.manifest.json";
+    public const string NavigationDataSuffix = ".navigation.bytes";
+    public const string NavigationManifestSuffix = ".navigation.manifest.json";
+    public const string LegacyDataSuffix = ".navmesh.bytes";
 
     public static ServerNavigation Load(string manifestPath, JsonSerializerOptions jsonOptions)
     {
@@ -128,13 +131,12 @@ public static class NavigationArtifactStore
         // The file name comes from the network and is used to build a path, so anything
         // that could escape the data folder is refused outright.
         string fileName = Path.GetFileName(manifest.FileName);
-        if (!string.Equals(fileName, manifest.FileName, StringComparison.Ordinal)
-            || fileName.Length == 0
-            || !fileName.EndsWith(".navmesh.bytes", StringComparison.Ordinal))
+        if (!IsSupportedArtifactFileName(manifest.FileName))
         {
             return Rejected(
                 $"Unexpected artifact file name '{manifest.FileName}'. " +
-                "It must be a plain '<level>.<hash>.navmesh.bytes' name.");
+                "It must be a plain '<level>.navigation.bytes' name or a legacy " +
+                "'<level>.<hash>.navmesh.bytes' name.");
         }
 
         byte[] data;
@@ -159,23 +161,14 @@ public static class NavigationArtifactStore
         }
 
         Directory.CreateDirectory(dataDirectory);
-        string manifestFileName =
-            Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(fileName))
-            + ".manifest.json";
+        string manifestFileName = GetManifestFileName(fileName);
         string manifestJson = request.ManifestJson!.TrimEnd() + "\n";
-
-        File.WriteAllBytes(Path.Combine(dataDirectory, fileName), data);
-        File.WriteAllText(
+        WriteFilesAtomically(
+            Path.Combine(dataDirectory, fileName),
+            data,
             Path.Combine(dataDirectory, manifestFileName),
             manifestJson,
-            new UTF8Encoding(false));
-        if (request.SetActive)
-        {
-            File.WriteAllText(
-                Path.Combine(dataDirectory, ActiveManifestFileName),
-                manifestJson,
-                new UTF8Encoding(false));
-        }
+            request.SetActive ? Path.Combine(dataDirectory, ActiveManifestFileName) : null);
 
         Console.WriteLine(
             $"[upload] Stored level={manifest.LevelId}, hash={manifest.ArtifactHash}, " +
@@ -206,17 +199,112 @@ public static class NavigationArtifactStore
 
     private static string RequirePlainArtifactFileName(string value)
     {
-        string fileName = Path.GetFileName(value);
-        if (string.IsNullOrWhiteSpace(value)
-            || !string.Equals(fileName, value, StringComparison.Ordinal)
-            || !fileName.EndsWith(".navmesh.bytes", StringComparison.Ordinal))
+        if (!IsSupportedArtifactFileName(value))
         {
             throw new InvalidDataException(
-                $"Unexpected navigation artifact file name '{value}'. It must be a plain "
-                + "'<level>.<hash>.navmesh.bytes' name next to its manifest.");
+                $"Unexpected navigation artifact file name '{value}'. It must be a plain " +
+                "'<level>.navigation.bytes' name or a legacy '<level>.<hash>.navmesh.bytes' " +
+                "name next to its manifest.");
         }
 
-        return fileName;
+        return value;
+    }
+
+    internal static bool IsSupportedArtifactFileName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)
+            || !string.Equals(Path.GetFileName(value), value, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return (value.Length > NavigationDataSuffix.Length
+                && value.EndsWith(NavigationDataSuffix, StringComparison.Ordinal))
+               || (value.Length > LegacyDataSuffix.Length
+                   && value.EndsWith(LegacyDataSuffix, StringComparison.Ordinal));
+    }
+
+    internal static string GetManifestFileName(string payloadFileName)
+    {
+        string fileName = RequirePlainArtifactFileName(payloadFileName);
+        if (fileName.EndsWith(NavigationDataSuffix, StringComparison.Ordinal))
+        {
+            return fileName[..^NavigationDataSuffix.Length] + NavigationManifestSuffix;
+        }
+
+        return fileName[..^LegacyDataSuffix.Length] + ".manifest.json";
+    }
+
+    internal static void WriteFilesAtomically(
+        string dataPath,
+        byte[] data,
+        string manifestPath,
+        string manifestJson,
+        string? activeManifestPath,
+        Action<int>? beforeCommit = null)
+    {
+        string[] targets = activeManifestPath is null
+            ? [dataPath, manifestPath]
+            : [dataPath, manifestPath, activeManifestPath];
+        byte[] manifestBytes = new UTF8Encoding(false).GetBytes(manifestJson);
+        byte[]?[] previous = new byte[targets.Length][];
+        bool[] existed = new bool[targets.Length];
+        string?[] temporary = new string[targets.Length];
+        string token = Guid.NewGuid().ToString("N");
+        try
+        {
+            for (int i = 0; i < targets.Length; i++)
+            {
+                string directory = Path.GetDirectoryName(Path.GetFullPath(targets[i]))
+                                   ?? throw new InvalidOperationException("Cannot resolve export folder.");
+                Directory.CreateDirectory(directory);
+                existed[i] = File.Exists(targets[i]);
+                previous[i] = existed[i] ? File.ReadAllBytes(targets[i]) : null;
+                temporary[i] = targets[i] + ".tmp-" + token;
+                File.WriteAllBytes(temporary[i]!, i == 0 ? data : manifestBytes);
+            }
+
+            for (int i = 0; i < targets.Length; i++)
+            {
+                beforeCommit?.Invoke(i);
+                if (File.Exists(targets[i]))
+                {
+                    File.Replace(temporary[i]!, targets[i], null);
+                }
+                else
+                {
+                    File.Move(temporary[i]!, targets[i]);
+                }
+                temporary[i] = null;
+            }
+        }
+        catch
+        {
+            for (int i = 0; i < targets.Length; i++)
+            {
+                if (existed[i])
+                {
+                    File.WriteAllBytes(targets[i], previous[i]!);
+                }
+                else if (File.Exists(targets[i]))
+                {
+                    File.Delete(targets[i]);
+                }
+            }
+
+            throw;
+        }
+        finally
+        {
+            for (int i = 0; i < temporary.Length; i++)
+            {
+                string? temporaryPath = temporary[i];
+                if (temporaryPath is not null && File.Exists(temporaryPath))
+                {
+                    File.Delete(temporaryPath);
+                }
+            }
+        }
     }
 
     /// <summary>

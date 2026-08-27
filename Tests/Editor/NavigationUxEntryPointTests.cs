@@ -146,10 +146,9 @@ namespace CustomNavigation.Editor.Tests
             const string levelId = "ux-delete-test";
             const string hash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
             string folder = NavigationArtifactBuilder.GeneratedClientFolder;
-            string stem = levelId + "." + hash.Substring(0, 12);
-            string payloadPath = $"{folder}/{stem}.navmesh.bytes";
-            string manifestPath = $"{folder}/{stem}.manifest.json";
-            string artifactPath = $"{folder}/{levelId}.artifact.asset";
+            string payloadPath = $"{folder}/{levelId}.navigation.bytes";
+            string manifestPath = $"{folder}/{levelId}.navigation.manifest.json";
+            string artifactPath = $"{folder}/{levelId}.navigation.asset";
 
             try
             {

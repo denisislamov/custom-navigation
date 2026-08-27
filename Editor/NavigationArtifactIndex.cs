@@ -143,7 +143,7 @@ namespace CustomNavigation.Editor
                 {
                     row.State = NavigationArtifactSyncState.Broken;
                     row.Details = string.IsNullOrEmpty(exact.error)
-                        ? "The .navmesh.bytes for this hash is missing or corrupted on the server."
+                            ? "The navigation payload for this digest is missing or corrupted on the server."
                         : exact.error;
                 }
                 else if (chosen != null)
@@ -270,7 +270,7 @@ namespace CustomNavigation.Editor
                     isLoaded = false,
                     error = dataPresent
                         ? (hashMatches ? string.Empty : "The file SHA-256 does not match the manifest.")
-                        : "There is no .navmesh.bytes next to the manifest."
+                        : "There is no navigation payload next to the manifest."
                 });
             }
 

@@ -88,8 +88,8 @@ namespace CustomNavigation.Editor
             else
             {
                 EditorGUILayout.HelpBox(
-                    $"Ready · {artifact.PolygonCount} polygons · " +
-                    NavigationArtifactIndex.Short(artifact.ArtifactHash),
+                    $"Ready · {artifact.PolygonCount} polygons · {artifact.SourceMeshCount} sources · " +
+                    $"{(artifact.NavigationData != null ? artifact.NavigationData.bytes.Length / 1024f : 0f):0.#} KB",
                     MessageType.Info);
             }
 
@@ -162,7 +162,9 @@ namespace CustomNavigation.Editor
                 NavigationArtifactBuildResult result = NavigationArtifactBuilder.BuildForClient(level);
                 validationReport = NavigationValidationReport.Create(level);
                 lastBakeMessage =
-                    $"Bake finished.\nPolygons: {result.PolygonCount}\nSource meshes: {result.SourceMeshCount}\nHash: {result.Hash}";
+                    $"Bake finished.\nPolygons: {result.PolygonCount}\n" +
+                    $"Source meshes: {result.SourceMeshCount}\nSize: {result.ByteSize} bytes\n" +
+                    result.ClientDataPath;
                 lastBakeMessageType = MessageType.Info;
             }
             catch (Exception exception)

@@ -25,7 +25,7 @@ namespace CustomNavigation.Editor
             }
 
             NavigationArtifactAsset artifact = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
-                "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset");
+                "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.navigation.asset");
             NavigationAgentProfile agent = AssetDatabase.LoadAssetAtPath<NavigationAgentProfile>(
                 "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset");
             NavigationPerformanceProfile performance =

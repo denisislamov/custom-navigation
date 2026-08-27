@@ -316,6 +316,24 @@ namespace CustomNavigation.Editor
             NavigationLevel level,
             List<NavigationValidationIssue> issues)
         {
+            NavigationLevel[] loadedLevels = Object.FindObjectsByType<NavigationLevel>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+            for (int i = 0; i < loadedLevels.Length; i++)
+            {
+                if (loadedLevels[i] != level
+                    && string.Equals(loadedLevels[i].LevelId, level.LevelId, StringComparison.Ordinal))
+                {
+                    issues.Add(new NavigationValidationIssue(
+                        NavigationValidationSeverity.Error,
+                        $"Duplicate Navigation Level ID '{level.LevelId}'. Stable artifact filenames " +
+                        "must not let two loaded levels overwrite each other.",
+                        level,
+                        NavigationValidationCategory.Identifiers));
+                    break;
+                }
+            }
+
             ValidateIds(
                 level.GetComponentsInChildren<NavigationLink>(true),
                 value => value.LinkId,

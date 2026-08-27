@@ -103,6 +103,11 @@ namespace CustomNavigation.Editor
         public const string DotRecastVersion = "2026.1.3";
         public const string GeneratedClientFolder = "Assets/DataSakura/CustomNavigation/Generated/Navigation";
         public const string ActiveManifestFileName = "active.manifest.json";
+        public const string NavigationDataSuffix = ".navigation.bytes";
+        public const string NavigationManifestSuffix = ".navigation.manifest.json";
+        public const string NavigationAssetSuffix = ".navigation.asset";
+        public const string LegacyDataSuffix = ".navmesh.bytes";
+        public const string LegacyAssetSuffix = ".artifact.asset";
         public const string DefaultServerArtifactFolder =
             NavigationServerSettings.DefaultServerArtifactFolder;
         private const int WalkableFlag = 1;
@@ -306,6 +311,16 @@ namespace CustomNavigation.Editor
                     "Navigation authoring validation failed: " + firstError.Message);
             }
 
+            string safeLevelId = NavigationIdUtility.Sanitize(level.LevelId, "level");
+            NavigationArtifactAsset legacyAsset = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
+                GetLegacyClientAssetPath(safeLevelId));
+            if (legacyAsset != null)
+            {
+                throw new InvalidOperationException(
+                    $"Legacy artifact filenames exist for level '{safeLevelId}'. Run the explicit " +
+                    "artifact filename migration in Diagnostics before building again.");
+            }
+
             BuiltNavigation built = Build(level, progress);
 
             progress?.Stage("Serializing the DotRecast binary");
@@ -313,11 +328,9 @@ namespace CustomNavigation.Editor
 
             progress?.Stage("Hashing with SHA-256");
             string hash = ComputeSha256(data);
-            string safeLevelId = NavigationIdUtility.Sanitize(level.LevelId, "level");
-            string fileStem = safeLevelId + "." + hash.Substring(0, 12);
-            string clientDataPath = $"{GeneratedClientFolder}/{fileStem}.navmesh.bytes";
-            string clientManifestPath = $"{GeneratedClientFolder}/{fileStem}.manifest.json";
-            string clientAssetPath = $"{GeneratedClientFolder}/{safeLevelId}.artifact.asset";
+            string clientDataPath = GetClientDataPath(safeLevelId);
+            string clientManifestPath = GetClientManifestPath(safeLevelId);
+            string clientAssetPath = GetClientAssetPath(safeLevelId);
 
             progress?.Stage("Writing the artifact into the project");
             EnsureAssetFolder(GeneratedClientFolder);
@@ -450,23 +463,25 @@ namespace CustomNavigation.Editor
                     "Rebuild it with the Build for Client button.");
             }
 
+            if (!TryValidateManifest(artifactAsset, out string manifestError))
+            {
+                throw new InvalidOperationException(
+                    $"The manifest of artifact '{artifactAsset.LevelId}' is corrupted: " +
+                    manifestError);
+            }
+
             string manifestJson = artifactAsset.ManifestJson;
             string serverFolder = ResolveServerFolder();
             Directory.CreateDirectory(serverFolder);
-            string serverDataPath = Path.Combine(serverFolder, manifest.fileName);
-            string serverManifestPath = Path.Combine(
-                serverFolder,
-                Path.GetFileNameWithoutExtension(
-                    Path.GetFileNameWithoutExtension(manifest.fileName)) + ".manifest.json");
-            File.WriteAllBytes(serverDataPath, data);
-            File.WriteAllText(serverManifestPath, manifestJson + "\n", new UTF8Encoding(false));
-            if (setAsActive)
-            {
-                File.WriteAllText(
-                    Path.Combine(serverFolder, ActiveManifestFileName),
-                    manifestJson + "\n",
-                    new UTF8Encoding(false));
-            }
+            string fileName = RequireSupportedPayloadFileName(manifest.fileName);
+            string serverDataPath = Path.Combine(serverFolder, fileName);
+            string serverManifestPath = Path.Combine(serverFolder, GetManifestFileName(fileName));
+            WriteServerFilesAtomically(
+                serverDataPath,
+                data,
+                serverManifestPath,
+                manifestJson.TrimEnd() + "\n",
+                setAsActive ? Path.Combine(serverFolder, ActiveManifestFileName) : null);
 
             return new NavigationServerExportResult(
                 manifest.levelId,
@@ -493,8 +508,36 @@ namespace CustomNavigation.Editor
         public static NavigationArtifactAsset LoadClientArtifact(string levelId)
         {
             string safeLevelId = NavigationIdUtility.Sanitize(levelId, "level");
-            return AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
-                $"{GeneratedClientFolder}/{safeLevelId}.artifact.asset");
+            NavigationArtifactAsset current = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
+                GetClientAssetPath(safeLevelId));
+            return current != null
+                ? current
+                : AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
+                    GetLegacyClientAssetPath(safeLevelId));
+        }
+
+        public static string GetClientDataPath(string levelId)
+        {
+            string safeLevelId = NavigationIdUtility.Sanitize(levelId, "level");
+            return $"{GeneratedClientFolder}/{safeLevelId}{NavigationDataSuffix}";
+        }
+
+        public static string GetClientManifestPath(string levelId)
+        {
+            string safeLevelId = NavigationIdUtility.Sanitize(levelId, "level");
+            return $"{GeneratedClientFolder}/{safeLevelId}{NavigationManifestSuffix}";
+        }
+
+        public static string GetClientAssetPath(string levelId)
+        {
+            string safeLevelId = NavigationIdUtility.Sanitize(levelId, "level");
+            return $"{GeneratedClientFolder}/{safeLevelId}{NavigationAssetSuffix}";
+        }
+
+        internal static string GetLegacyClientAssetPath(string levelId)
+        {
+            string safeLevelId = NavigationIdUtility.Sanitize(levelId, "level");
+            return $"{GeneratedClientFolder}/{safeLevelId}{LegacyAssetSuffix}";
         }
 
         /// <summary>
@@ -518,19 +561,43 @@ namespace CustomNavigation.Editor
 
             if (!string.IsNullOrEmpty(payloadPath))
             {
-                const string payloadSuffix = ".navmesh.bytes";
-                if (!payloadPath.EndsWith(payloadSuffix, StringComparison.OrdinalIgnoreCase))
+                string manifestPath;
+                if (payloadPath.EndsWith(NavigationDataSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    manifestPath = payloadPath.Substring(
+                        0,
+                        payloadPath.Length - NavigationDataSuffix.Length) + NavigationManifestSuffix;
+                }
+                else if (payloadPath.EndsWith(LegacyDataSuffix, StringComparison.OrdinalIgnoreCase))
+                {
+                    manifestPath = payloadPath.Substring(
+                        0,
+                        payloadPath.Length - LegacyDataSuffix.Length) + ".manifest.json";
+                }
+                else
                 {
                     throw new InvalidOperationException(
-                        $"Navigation payload '{payloadPath}' does not use the expected '{payloadSuffix}' suffix.");
+                        $"Navigation payload '{payloadPath}' must end with " +
+                        $"'{NavigationDataSuffix}' or legacy '{LegacyDataSuffix}'.");
                 }
-
-                string manifestPath = payloadPath.Substring(0, payloadPath.Length - payloadSuffix.Length)
-                    + ".manifest.json";
                 AddGeneratedClientPath(paths, manifestPath, "navigation manifest", allowMissing: true);
             }
 
             return paths;
+        }
+
+        internal static string GetClientManifestPath(NavigationArtifactAsset artifact)
+        {
+            IReadOnlyList<string> paths = GetClientArtifactPaths(artifact);
+            for (int i = 0; i < paths.Count; i++)
+            {
+                if (paths[i].EndsWith(".manifest.json", StringComparison.OrdinalIgnoreCase))
+                {
+                    return paths[i];
+                }
+            }
+
+            return GetClientManifestPath(artifact.LevelId);
         }
 
         /// <summary>Deletes only the selected client artifact and its generated payload files.</summary>
@@ -589,6 +656,164 @@ namespace CustomNavigation.Editor
                 ? settings.ServerArtifactFolder
                 : DefaultServerArtifactFolder;
             return Path.GetFullPath(Path.Combine(projectRoot, relative));
+        }
+
+        internal static bool IsSupportedPayloadFileName(string fileName)
+        {
+            return !string.IsNullOrWhiteSpace(fileName)
+                   && string.Equals(Path.GetFileName(fileName), fileName, StringComparison.Ordinal)
+                   && ((fileName.Length > NavigationDataSuffix.Length
+                        && fileName.EndsWith(NavigationDataSuffix, StringComparison.Ordinal))
+                       || (fileName.Length > LegacyDataSuffix.Length
+                           && fileName.EndsWith(LegacyDataSuffix, StringComparison.Ordinal)));
+        }
+
+        internal static bool TryValidateManifest(
+            NavigationArtifactAsset artifact,
+            out string error)
+        {
+            NavigationArtifactManifest manifest;
+            try
+            {
+                manifest = JsonUtility.FromJson<NavigationArtifactManifest>(artifact.ManifestJson);
+            }
+            catch (Exception exception)
+            {
+                error = "invalid JSON: " + exception.Message;
+                return false;
+            }
+
+            if (manifest == null)
+            {
+                error = "manifest is empty";
+                return false;
+            }
+
+            if (!string.Equals(manifest.levelId, artifact.LevelId, StringComparison.Ordinal)
+                || !string.Equals(manifest.artifactHash, artifact.ArtifactHash,
+                    StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(manifest.schemaVersion, artifact.SchemaVersion,
+                    StringComparison.Ordinal)
+                || !string.Equals(manifest.dotRecastVersion, artifact.DotRecastVersion,
+                    StringComparison.Ordinal)
+                || !string.Equals(manifest.agentProfileId, artifact.AgentProfileId,
+                    StringComparison.Ordinal)
+                || manifest.polygonCount != artifact.PolygonCount
+                || manifest.sourceMeshCount != artifact.SourceMeshCount)
+            {
+                error = "identity, version, profile, or count fields do not match the artifact asset";
+                return false;
+            }
+
+            if (!IsSupportedPayloadFileName(manifest.fileName))
+            {
+                error = $"unsupported fileName '{manifest.fileName}'";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        internal static string GetManifestFileName(string payloadFileName)
+        {
+            string fileName = RequireSupportedPayloadFileName(payloadFileName);
+            if (fileName.EndsWith(NavigationDataSuffix, StringComparison.Ordinal))
+            {
+                return fileName.Substring(0, fileName.Length - NavigationDataSuffix.Length)
+                       + NavigationManifestSuffix;
+            }
+
+            return fileName.Substring(0, fileName.Length - LegacyDataSuffix.Length)
+                   + ".manifest.json";
+        }
+
+        private static string RequireSupportedPayloadFileName(string value)
+        {
+            if (!IsSupportedPayloadFileName(value))
+            {
+                throw new InvalidOperationException(
+                    $"Unexpected navigation payload file name '{value}'. It must be a plain " +
+                    $"'<level>{NavigationDataSuffix}' name or a legacy '*{LegacyDataSuffix}' name.");
+            }
+
+            return value;
+        }
+
+        internal static void WriteServerFilesAtomically(
+            string dataPath,
+            byte[] data,
+            string manifestPath,
+            string manifestJson,
+            string activeManifestPath,
+            Action<int> beforeCommit = null)
+        {
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            string[] targets = string.IsNullOrEmpty(activeManifestPath)
+                ? new[] { dataPath, manifestPath }
+                : new[] { dataPath, manifestPath, activeManifestPath };
+            byte[][] previous = new byte[targets.Length][];
+            bool[] existed = new bool[targets.Length];
+            string token = Guid.NewGuid().ToString("N");
+            string[] temporary = new string[targets.Length];
+            byte[] manifestBytes = new UTF8Encoding(false).GetBytes(manifestJson);
+            try
+            {
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    string directory = Path.GetDirectoryName(Path.GetFullPath(targets[i]))
+                                       ?? throw new InvalidOperationException("Cannot resolve export folder.");
+                    Directory.CreateDirectory(directory);
+                    existed[i] = File.Exists(targets[i]);
+                    previous[i] = existed[i] ? File.ReadAllBytes(targets[i]) : null;
+                    temporary[i] = targets[i] + ".tmp-" + token;
+                    File.WriteAllBytes(temporary[i], i == 0 ? data : manifestBytes);
+                }
+
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    beforeCommit?.Invoke(i);
+                    if (File.Exists(targets[i]))
+                    {
+                        File.Replace(temporary[i], targets[i], null);
+                    }
+                    else
+                    {
+                        File.Move(temporary[i], targets[i]);
+                    }
+                    temporary[i] = null;
+                }
+            }
+            catch
+            {
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    if (existed[i])
+                    {
+                        File.WriteAllBytes(targets[i], previous[i]);
+                    }
+                    else if (File.Exists(targets[i]))
+                    {
+                        File.Delete(targets[i]);
+                    }
+                }
+
+                throw;
+            }
+            finally
+            {
+                for (int i = 0; i < temporary.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(temporary[i]) && File.Exists(temporary[i]))
+                    {
+                        File.Delete(temporary[i]);
+                    }
+                }
+            }
         }
 
         private static BuiltNavigation Build(NavigationLevel level)

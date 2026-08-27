@@ -19,7 +19,7 @@
 |---|---|
 | **Рантайм** | .NET 9, `System.Net.HttpListener` (не ASP.NET, не Kestrel), 0 NuGet-зависимостей |
 | **Зависимости** | Только `DotRecast.Core.dll` + `DotRecast.Detour.dll` (локальные DLL в `lib/`). `Recast` (бейк) сюда не нужен |
-| **Формат данных** | `<level>.<hash>.navmesh.bytes` + `<level>.<hash>.manifest.json`, испечённые Unity |
+| **Формат данных** | `<level>.navigation.bytes` + `<level>.navigation.manifest.json`; legacy hash-based пары также читаются |
 | **Детерминизм** | Тот же бинарный navmesh, что у клиента + SHA-256 отпечаток пути (`NavigationPathFingerprint`) |
 | **Мультиуровневость** | Держит все карты из папки данных, выбирает по `levelId` или по `active.manifest.json` |
 | **Hot reload** | Ленивая загрузка + кеш по mtime манифеста → перезапуск не нужен |
@@ -152,8 +152,8 @@ CORS-заголовки (`Allow-Origin: *`, `Allow-Headers: Content-Type`,
   "artifacts": [{
     "levelId": "...", "description": "...", "artifactHash": "...",
     "schemaVersion": "1", "dotRecastVersion": "2026.1.3", "agentProfileId": "...",
-    "polygonCount": 0, "sourceMeshCount": 0, "fileName": "lvl.hash.navmesh.bytes",
-    "dataPresent": true,      // .navmesh.bytes лежит рядом
+    "polygonCount": 0, "sourceMeshCount": 0, "fileName": "lvl.navigation.bytes",
+    "dataPresent": true,      // .navigation.bytes лежит рядом
     "hashMatchesData": true,  // SHA-256 файла == artifactHash манифеста
     "isActive": true,         // хеш совпал с active.manifest.json
     "isLoaded": true,         // эта карта сейчас в памяти
@@ -173,7 +173,7 @@ CORS-заголовки (`Allow-Origin: *`, `Allow-Headers: Content-Type`,
 { "manifestJson": "{...}", "dataBase64": "...", "setActive": true }
 // ответ
 { "success": true, "levelId": "...", "artifactHash": "...",
-  "fileName": "lvl.hash.navmesh.bytes", "setActive": true, "message": "Uploaded and marked active." }
+  "fileName": "lvl.navigation.bytes", "setActive": true, "message": "Uploaded and marked active." }
 ```
 
 Порядок проверок в `NavigationArtifactStore.Save` — **всё до записи на диск**:
@@ -181,13 +181,14 @@ CORS-заголовки (`Allow-Origin: *`, `Allow-Headers: Content-Type`,
 1. `manifestJson` и `dataBase64` непустые;
 2. манифест парсится и содержит `fileName`;
 3. **защита от path traversal:** `Path.GetFileName(fileName) == fileName` и суффикс
-   `.navmesh.bytes` — «простое» имя, выйти из папки данных нельзя;
+   `.navigation.bytes` или legacy `.navmesh.bytes` — выйти из папки данных нельзя;
 4. base64 декодируется;
 5. `Create(...)`: schema `1`, DotRecast `2026.1.3`, SHA-256 совпадает с манифестом,
    navmesh реально парсится `DtMeshSetReader`, `polygonCount` совпадает.
 
-Только после этого пишутся `.navmesh.bytes` → манифест → (если `setActive`)
-`active.manifest.json`. **Битая выгрузка не может оставить полуживую карту.**
+Только после этого временные payload/manifest/active файлы фиксируются как комплект. При ошибке
+предыдущие файлы восстанавливаются, а временные удаляются. **Битая выгрузка не может оставить
+активную полуживую карту.**
 Явного `reload` нет и не нужно: реестр заметит новый mtime манифеста сам.
 
 > Манифест сохраняется **байт-в-байт как прислал Unity** (`TrimEnd() + "\n"`,
@@ -298,7 +299,7 @@ straightPathOptions  = DT_STRAIGHTPATH_ALL_CROSSINGS
 под `lock`. Совпал mtime — отдаём из памяти; изменился — перечитываем navmesh.
 Перезапуск сервера после нового экспорта **не нужен**.
 
-> ⚠️ Инвалидация только по **манифесту**. Если подменить `.navmesh.bytes`, не тронув
+> ⚠️ Инвалидация только по **манифесту**. Если подменить navigation payload, не тронув
 > манифест, сервер продолжит отдавать старую карту из кеша. Всегда пишите оба файла
 > (Unity так и делает).
 >
@@ -329,7 +330,7 @@ straightPathOptions  = DT_STRAIGHTPATH_ALL_CROSSINGS
 
 ## 7. Формат артефакта (контракт с Unity)
 
-`<levelId>.<первые 12 символов хеша>.navmesh.bytes` + одноимённый `.manifest.json`:
+`<levelId>.navigation.bytes` + `<levelId>.navigation.manifest.json`:
 
 ```jsonc
 {
@@ -337,13 +338,18 @@ straightPathOptions  = DT_STRAIGHTPATH_ALL_CROSSINGS
   "dotRecastVersion": "2026.1.3",
   "levelId": "local_bots_arena",
   "description": "...",
-  "artifactHash": "<SHA-256 всего .navmesh.bytes, hex lower>",
+  "artifactHash": "<SHA-256 всего .navigation.bytes, hex lower>",
   "agentProfileId": "...",
   "polygonCount": 1234,
   "sourceMeshCount": 17,
-  "fileName": "local_bots_arena.e35d4eaaa6fe.navmesh.bytes"
+  "fileName": "local_bots_arena.navigation.bytes"
 }
 ```
+
+Legacy `<level>.<hash>.navmesh.bytes` и соответствующий manifest остаются читаемыми. Полный
+SHA-256 является машинной identity содержимого и не удалён из manifest/runtime-проверок.
+Несколько сохраняемых экспортов одного уровня размещайте в отдельных именованных папках сборок
+с одинаковыми именами внутри.
 
 Бинарник — стандартный Detour mesh set (`DtMeshSetWriter` в Unity ↔ `DtMeshSetReader`
 на сервере). `active.manifest.json` — **точная копия** манифеста активной карты.
@@ -469,11 +475,12 @@ curl -s -X POST http://127.0.0.1:5079/path -H 'Content-Type: application/json' -
 5. **`searchExtents` и лимиты 256/256 расходятся с клиентом** → ложные mismatch.
 6. **`DtQueryDefaultFilter`** — сервер не знает про area costs и flags.
 7. **Partial path — это `success: true`.** Проверяйте `message`.
-8. **Кеш инвалидируется по mtime манифеста**, не по `.navmesh.bytes`.
+8. **Кеш инвалидируется по mtime манифеста**, не по payload-файлу.
 9. **Кеш карт не вытесняется.**
 10. **Аплоад без токена работает только на loopback**; на `*` — 403.
 11. **Токен сравнивается не constant-time и ходит по HTTP** без TLS.
-12. **Path traversal закрыт** проверкой `Path.GetFileName` + суффикса `.navmesh.bytes`.
+12. **Path traversal закрыт** проверкой `Path.GetFileName` и разрешённых суффиксов
+    `.navigation.bytes` / legacy `.navmesh.bytes`.
 13. **Манифест пишется байт-в-байт** как прислал Unity — не «улучшайте» форматирование.
 14. **Дефолтный `--data` завязан на `bin/Release/net9.0/../../..`** — в publish/Docker задавайте явно.
 15. **Запросы обрабатываются последовательно** — не нагрузочный сервер.

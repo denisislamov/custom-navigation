@@ -357,8 +357,7 @@ namespace CustomNavigation.Editor
                     continue;
                 }
 
-                AddArtifact(AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
-                    $"{NavigationArtifactBuilder.GeneratedClientFolder}/{levelId}.artifact.asset"));
+                AddArtifact(NavigationArtifactBuilder.LoadClientArtifact(levelId));
 
             }
 
@@ -499,8 +498,7 @@ namespace CustomNavigation.Editor
                     : "No Navigation Level";
             }
 
-            NavigationArtifactAsset artifact = AssetDatabase.LoadAssetAtPath<NavigationArtifactAsset>(
-                $"{NavigationArtifactBuilder.GeneratedClientFolder}/{level.LevelId}.artifact.asset");
+            NavigationArtifactAsset artifact = NavigationArtifactBuilder.LoadClientArtifact(level.LevelId);
             if (artifact == null)
             {
                 return "Not baked";
@@ -825,8 +823,14 @@ namespace CustomNavigation.Editor
         {
             for (int i = 0; i < paths.Length; i++)
             {
-                if (paths[i].EndsWith(".artifact.asset", StringComparison.OrdinalIgnoreCase)
-                    || paths[i].EndsWith(".navmesh.bytes", StringComparison.OrdinalIgnoreCase))
+                if (paths[i].EndsWith(NavigationArtifactBuilder.NavigationAssetSuffix,
+                        StringComparison.OrdinalIgnoreCase)
+                    || paths[i].EndsWith(NavigationArtifactBuilder.LegacyAssetSuffix,
+                        StringComparison.OrdinalIgnoreCase)
+                    || paths[i].EndsWith(NavigationArtifactBuilder.NavigationDataSuffix,
+                        StringComparison.OrdinalIgnoreCase)
+                    || paths[i].EndsWith(NavigationArtifactBuilder.LegacyDataSuffix,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }

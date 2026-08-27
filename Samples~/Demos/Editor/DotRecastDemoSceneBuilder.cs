@@ -16,7 +16,7 @@ namespace CustomNavigation.Editor
         public const string ServerClientScenePath = "Assets/DataSakura/CustomNavigation/Scenes/DotRecastServerClient.unity";
 
         private const string ArtifactPath =
-            "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.artifact.asset";
+            "Assets/DataSakura/CustomNavigation/Generated/Navigation/local_bots_arena.navigation.asset";
         private const string AgentProfilePath =
             "Assets/DataSakura/CustomNavigation/Generated/LocalBotsDemo/LocalBots_Agent.asset";
         private const string PerformanceProfilePath =

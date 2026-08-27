@@ -107,6 +107,13 @@ Then:
    so give it a few seconds.
 3. **Check /health** to confirm which artifact is loaded.
 
+New builds keep the existing generated root and use readable stable names:
+`<levelId>.navigation.bytes`, `<levelId>.navigation.manifest.json`, and
+`<levelId>.navigation.asset`. The full SHA-256 remains mandatory inside the manifest and can be
+copied from Build Details. Existing hash-based artifacts continue to load and export; run the
+explicit **Artifact Filename Migration** in Diagnostics to move them without changing GUIDs,
+payload bytes, or references.
+
 The order does not matter: the server starts fine with an empty `NavigationData` and
 reports `status: "no-artifact"` until you upload. New artifacts are picked up without a
 restart.
@@ -120,7 +127,9 @@ secret is entered in the Server tab — the token is kept in EditorPrefs, never 
 The server holds every level in its `NavigationData` folder and picks one per request:
 `POST /path` uses `levelId` from the body when present, otherwise the map that
 `active.manifest.json` points at - which *Export for Server* rewrites every time. With
-several exports of one level, the newest wins. `GET /health` lists `availableLevels`,
+legacy multiple exports of one level, the newest wins. Current stable names keep one current
+export per level in a folder. If several retained builds are needed, use separate named build
+folders with the same filenames inside. `GET /health` lists `availableLevels`,
 and `GET /health?level=<levelId>` inspects a specific map.
 
 The server runs as a child process of the editor, logs into the Unity Console and is
