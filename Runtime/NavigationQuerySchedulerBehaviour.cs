@@ -11,7 +11,7 @@ namespace CustomNavigation.Runtime
     {
         [SerializeField, Tooltip("Prebuilt navmesh artifact. The runtime loads it without a Recast bake.")]
         private NavigationArtifactAsset artifact;
-        [SerializeField, Tooltip("CPU, iteration, queue and memory limits of the local scheduler.")]
+        [SerializeField, Tooltip("CPU, iteration, admission, backlog, and result limits of the local scheduler.")]
         private NavigationPerformanceProfile performanceProfile;
         [SerializeField, Tooltip("Agent flags, area costs and nearest-poly extents for path queries.")]
         private NavigationAgentProfile agentProfile;

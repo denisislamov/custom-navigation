@@ -19,7 +19,7 @@ namespace CustomNavigation.Authoring
         private NavigationAgentProfile defaultAgentProfile;
         [SerializeField, Tooltip("Catalog of navigation areas, flags and base costs.")]
         private NavigationAreaCatalog areaCatalog;
-        [SerializeField, Tooltip("Mobile CPU, iteration, queue and memory budgets for local pathfinding.")]
+        [SerializeField, Tooltip("Local scheduler CPU, iteration, admission, backlog, and result limits.")]
         private NavigationPerformanceProfile performanceProfile;
         public string LevelId => levelId;
         public string Description => description;

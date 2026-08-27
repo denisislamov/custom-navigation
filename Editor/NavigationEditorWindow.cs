@@ -1395,7 +1395,7 @@ namespace CustomNavigation.Editor
             {
                 DrawSummaryRow("Preset", profile.DeviceTier.ToString());
                 DrawSummaryRow("Frame budget", profile.FrameBudgetMilliseconds.ToString("0.##") + " ms");
-                DrawSummaryRow("Queue / concurrent", $"{profile.MaximumQueuedQueries} / {profile.MaximumConcurrentSlicedQueries}");
+                DrawSummaryRow("Backlog / active", $"{profile.MaximumQueuedQueries} / {profile.MaximumConcurrentSlicedQueries}");
                 if (GUILayout.Button("Edit Runtime Query Budget", EditorStyles.miniButton))
                 {
                     pendingAction = () => ShowProfileUsageAndSelect(profile);

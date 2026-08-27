@@ -118,13 +118,14 @@ namespace CustomNavigation.Editor
             },
             ["maximumQueuedQueries"] = new FieldInfo
             {
-                Label = "Queue length",
-                Tooltip = "Beyond this count low priority requests are evicted."
+                Label = "Backlog limit",
+                Tooltip = "Maximum waiting requests, excluding active searches. A full backlog " +
+                          "rejects the incoming request unless it has priority to evict the worst queued one."
             },
             ["maximumPathPolygons"] = new FieldInfo
             {
                 Label = "Corridor polygons",
-                Tooltip = "Path buffer size. Too small and long routes get truncated."
+                Tooltip = "Polygon-corridor buffer size. Reaching the cap can produce a partial path."
             },
             ["maximumStraightPathPoints"] = new FieldInfo
             {
@@ -135,12 +136,14 @@ namespace CustomNavigation.Editor
             {
                 Label = "Queue lifetime",
                 Units = "s",
-                Tooltip = "A request that waited longer is considered stale and is canceled."
+                Tooltip = "Maximum wait before admission. An expired request reports a queue " +
+                          "expiration; this deadline never aborts an active sliced search."
             },
             ["budgetWarningMultiplier"] = new FieldInfo
             {
                 Label = "Warning threshold",
-                Tooltip = "Affects only the console warning text, not the execution."
+                Tooltip = "Multiplies Frame Budget for the rate-limited console warning. " +
+                          "It does not change scheduler execution limits."
             }
         };
 

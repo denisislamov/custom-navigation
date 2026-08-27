@@ -25,23 +25,23 @@ namespace CustomNavigation.Authoring
         private int maximumPathPolygons = 256;
         [SerializeField, Min(2), Tooltip("Maximum number of resulting path points, including polygon crossings on ramps.")]
         private int maximumStraightPathPoints = 128;
-        [SerializeField, Min(0.05f), Tooltip("Minimum interval between repeated path queries for a bot in combat.")]
+        [SerializeField, Min(0.05f), Tooltip("Consumer pacing value used by the bundled Local Bots sample; the scheduler does not enforce it.")]
         private float combatBotMinimumReplanSeconds = 0.25f;
-        [SerializeField, Min(0.05f), Tooltip("Minimum replanning interval for a visible but non-combat bot.")]
+        [SerializeField, Min(0.05f), Tooltip("Consumer pacing value used by the bundled Local Bots sample for visible bots; the scheduler does not enforce it.")]
         private float visibleBotMinimumReplanSeconds = 0.5f;
-        [SerializeField, Min(0.05f), Tooltip("Minimum replanning interval for a background or distant bot.")]
+        [SerializeField, Min(0.05f), Tooltip("Consumer pacing value used by the bundled Local Bots sample for background bots; the scheduler does not enforce it.")]
         private float backgroundBotMinimumReplanSeconds = 1.5f;
-        [SerializeField, Min(0.05f), Tooltip("How many seconds a queued request may wait before it is considered stale. An active query is not aborted by this deadline.")]
+        [SerializeField, Min(0.05f), Tooltip("Maximum wait before admission. Expiration applies only in the backlog; it never aborts an active sliced search.")]
         private float queryDeadlineSeconds = 0.5f;
-        [SerializeField, Min(0), Tooltip("Planned number of route cache entries. 0 disables the cache; the cache itself is a production-stage feature.")]
+        [SerializeField, Min(0), Tooltip("Reserved serialized value. No route cache is implemented or sized by this field.")]
         private int routeCacheEntries = 128;
-        [SerializeField, Min(1), Tooltip("Target memory budget for the navmesh, queries and route cache, in megabytes.")]
+        [SerializeField, Min(1), Tooltip("Reserved serialized value. Current runtime does not enforce a memory budget.")]
         private int memoryBudgetMegabytes = 24;
-        [SerializeField, Range(0, 4), Tooltip("Number of background workers. 0 keeps queries on the main thread; enable only after device profiling.")]
+        [SerializeField, Range(0, 4), Tooltip("Reserved serialized value. NavigationQueryScheduler remains owner-thread only.")]
         private int backgroundWorkerCount;
-        [SerializeField, Tooltip("Collect aggregated navigation metrics for production telemetry.")]
+        [SerializeField, Tooltip("Reserved serialized value. Scheduler metrics exist in memory, but no production telemetry collector reads this flag.")]
         private bool collectProductionMetrics = true;
-        [SerializeField, Min(1f), Tooltip("A warning is logged when the frame time exceeds Frame Budget multiplied by this factor.")]
+        [SerializeField, Min(1f), Tooltip("NavigationQuerySchedulerBehaviour logs a rate-limited warning above Frame Budget multiplied by this factor.")]
         private float budgetWarningMultiplier = 1.25f;
 
         public NavigationDeviceTier DeviceTier => deviceTier;

@@ -4,6 +4,23 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.12] - 2026-08-27
+
+### Changed
+- Reworked Navigation Performance around Mobile Low/Medium/High/Custom. The default Inspector
+  now shows verified local-scheduler limits; working details live in Advanced, while route
+  cache, memory target, workers, and production telemetry remain serialized under read-only
+  Legacy / Diagnostics.
+- Corrected field classification after auditing package runtime, reference server, bundled
+  samples, and the known EFT consumer. Replan intervals are sample-consumer pacing values and
+  Budget Warning Multiplier is active in `NavigationQuerySchedulerBehaviour`.
+- Documented backlog, admission, priority eviction, cancellation, queue-only expiration, and
+  result-buffer caps without changing scheduler semantics or adding a Server preset.
+
+### Tests
+- Added preset/legacy serialization coverage and scheduler tests for ordinary and overloaded
+  queues, priority eviction, cancellation, deterministic expiration, and result limits.
+
 ## [0.6.11] - 2026-08-27
 
 ### Added

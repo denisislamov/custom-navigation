@@ -261,6 +261,22 @@ namespace CustomNavigation.Editor
             return mesh;
         }
 
+#if UNITY_INCLUDE_TESTS
+        internal static NavigationArtifactInstance BuildInMemoryForSchedulerTests(
+            NavigationLevel level)
+        {
+            BuiltNavigation built = Build(level);
+            byte[] data = Serialize(built.NavMesh);
+            string hash = ComputeSha256(data);
+            return NavigationArtifactLoader.LoadBytes(
+                level.LevelId,
+                hash,
+                level.DefaultAgentProfile.ProfileId,
+                built.PolygonCount,
+                data);
+        }
+#endif
+
         /// <summary>Builds the navmesh and writes the client assets. Uploads nothing to the server.</summary>
         public static NavigationArtifactBuildResult BuildForClient(NavigationLevel level)
         {

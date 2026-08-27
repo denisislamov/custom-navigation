@@ -73,6 +73,10 @@ from Package Manager; Unity places it under
 
 ## Runtime configuration
 
+Local scheduler presets and the field-by-field Active/Reserved audit are documented in
+[`Documentation~/navigation-performance.md`](Documentation~/navigation-performance.md).
+These values do not change baked geometry and are not dedicated-server presets.
+
 `NavigationServerSettings` is loaded via
 `Resources.Load("CustomNavigation/NavigationServerSettings")`. To point the runtime at
 your navigation server, create the asset in **your project** at

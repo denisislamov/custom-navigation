@@ -102,6 +102,7 @@ namespace CustomNavigation.Runtime
         private readonly Stack<QueryWorkspace> workspacePool = new Stack<QueryWorkspace>();
         private readonly HashSet<long> canceled = new HashSet<long>();
         private readonly int ownerThreadId;
+        private readonly Func<double> timeProvider;
 
         private long nextRequestId;
         private long enqueueSequence;
@@ -127,6 +128,15 @@ namespace CustomNavigation.Runtime
             NavigationArtifactInstance loadedArtifact,
             NavigationPerformanceProfile performanceProfile,
             NavigationAgentProfile agentProfile)
+            : this(loadedArtifact, performanceProfile, agentProfile, null)
+        {
+        }
+
+        internal NavigationQueryScheduler(
+            NavigationArtifactInstance loadedArtifact,
+            NavigationPerformanceProfile performanceProfile,
+            NavigationAgentProfile agentProfile,
+            Func<double> schedulerTimeProvider)
         {
             artifact = loadedArtifact ?? throw new ArgumentNullException(nameof(loadedArtifact));
             performance = performanceProfile ?? throw new ArgumentNullException(nameof(performanceProfile));
@@ -136,6 +146,7 @@ namespace CustomNavigation.Runtime
             }
 
             ownerThreadId = Thread.CurrentThread.ManagedThreadId;
+            timeProvider = schedulerTimeProvider ?? NowSeconds;
             filter = CreateFilter(agentProfile);
             nearestPolyExtents = new RcVec3f(
                 Mathf.Max(1f, agentProfile.Radius * 4f),
@@ -191,7 +202,7 @@ namespace CustomNavigation.Runtime
                 priority,
                 start,
                 destination,
-                NowSeconds(),
+                CurrentTimeSeconds(),
                 completion);
 
             if (queued.Count >= performance.MaximumQueuedQueries)
@@ -237,6 +248,11 @@ namespace CustomNavigation.Runtime
 
         public void Tick()
         {
+            Tick(true);
+        }
+
+        internal void Tick(bool processActiveQueries)
+        {
             EnsureOwnerThread();
             long frameStart = Stopwatch.GetTimestamp();
             lastFrameIterations = 0;
@@ -244,7 +260,8 @@ namespace CustomNavigation.Runtime
             ExpireAndCancelQueued();
             AdmitQueries(frameStart);
 
-            while (active.Count > 0
+            while (processActiveQueries
+                   && active.Count > 0
                    && lastFrameIterations < performance.MaximumIterationsPerFrame
                    && ElapsedMilliseconds(frameStart) < performance.FrameBudgetMilliseconds)
             {
@@ -335,7 +352,7 @@ namespace CustomNavigation.Runtime
                     continue;
                 }
 
-                if (NowSeconds() - request.CreatedAtSeconds > performance.QueryDeadlineSeconds)
+                if (CurrentTimeSeconds() - request.CreatedAtSeconds > performance.QueryDeadlineSeconds)
                 {
                     Complete(request, false, false, false, "Navigation request expired in the queue.");
                     continue;
@@ -487,7 +504,7 @@ namespace CustomNavigation.Runtime
 
         private void ExpireAndCancelQueued()
         {
-            double now = NowSeconds();
+            double now = CurrentTimeSeconds();
             for (int i = queued.Count - 1; i >= 0; i--)
             {
                 PendingQuery request = queued[i];
@@ -528,7 +545,7 @@ namespace CustomNavigation.Runtime
                 message,
                 points,
                 iterations,
-                (NowSeconds() - request.CreatedAtSeconds) * 1000d);
+                (CurrentTimeSeconds() - request.CreatedAtSeconds) * 1000d);
             try
             {
                 request.Completion(result);
@@ -607,6 +624,11 @@ namespace CustomNavigation.Runtime
         private static double NowSeconds()
         {
             return Stopwatch.GetTimestamp() * TimestampToSeconds;
+        }
+
+        private double CurrentTimeSeconds()
+        {
+            return timeProvider();
         }
 
         private static double ElapsedMilliseconds(long startTimestamp)
