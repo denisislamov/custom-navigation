@@ -13,8 +13,8 @@ using Object = UnityEngine.Object;
 namespace CustomNavigation.Editor
 {
     /// <summary>
-    /// Draws the baked navmesh polygons in the Scene View while
-    /// Tools/Custom Navigation/Navigation Highlight is enabled. Artifacts come from
+    /// Draws the baked navmesh polygons in the Scene View while Navigation Highlight is enabled
+    /// in the Custom Navigation window or Scene Preview preferences. Artifacts come from
     /// the scene NavigationQuerySchedulerBehaviour and from NavigationLevel by its level id.
     /// </summary>
     [InitializeOnLoad]

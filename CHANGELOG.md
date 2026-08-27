@@ -4,6 +4,13 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Removed the legacy `Tools/Custom Navigation/Navigation Highlight` menu registration.
+  The package now exposes only `Tools/DataSakura/Custom Navigation Window`, while Scene
+  Preview remains configurable from the window and user Preferences.
+
 ## [0.6.9] - 2026-08-27
 
 ### Added

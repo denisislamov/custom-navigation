@@ -73,7 +73,7 @@ namespace CustomNavigation.Editor
 
         private List<NavigationArtifactComparison> artifactComparisons;
 
-        internal const string MainMenuPath = "Tools/DataSakura/Custom Navigation";
+        internal const string MainMenuPath = "Tools/DataSakura/Custom Navigation Window";
         internal const string WindowTitle = "DS Navigation";
 
         [MenuItem(MainMenuPath, priority = 100)]

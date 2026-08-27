@@ -29,7 +29,7 @@ namespace CustomNavigation.Editor.Tests
                 BindingFlags.Public | BindingFlags.Static);
             Assert.That(open, Is.Not.Null);
             MenuItem menu = open.GetCustomAttributes(typeof(MenuItem), false).Cast<MenuItem>().Single();
-            Assert.That(menu.menuItem, Is.EqualTo("Tools/DataSakura/Custom Navigation"));
+            Assert.That(menu.menuItem, Is.EqualTo("Tools/DataSakura/Custom Navigation Window"));
             Assert.That(NavigationEditorWindow.RequiresSelectedLevel(3), Is.False,
                 "Project defaults must be reachable from Settings without creating a level.");
             Assert.That(NavigationEditorWindow.RequiresSelectedLevel(4), Is.False);
@@ -47,6 +47,25 @@ namespace CustomNavigation.Editor.Tests
                     BindingFlags.Public | BindingFlags.Static),
                 Is.Not.Null,
                 "The existing automation entrypoint must remain public.");
+        }
+
+        [Test]
+        public void PackageRegistersOnlyTheCustomNavigationWindowInTheToolsMenu()
+        {
+            string[] toolsItems = typeof(NavigationEditorWindow).Assembly
+                .GetTypes()
+                .SelectMany(type => type.GetMethods(
+                    BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
+                .SelectMany(method => method.GetCustomAttributes(typeof(MenuItem), false))
+                .Cast<MenuItem>()
+                .Select(attribute => attribute.menuItem)
+                .Where(path => path.StartsWith("Tools/", StringComparison.Ordinal))
+                .Distinct()
+                .ToArray();
+
+            Assert.That(
+                toolsItems,
+                Is.EqualTo(new[] { "Tools/DataSakura/Custom Navigation Window" }));
         }
 
         [Test]

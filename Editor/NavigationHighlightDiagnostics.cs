@@ -34,13 +34,14 @@ namespace CustomNavigation.Editor
                 NavigationHighlightSettings.EnabledPreferenceKey,
                 NavigationHighlightSettings.DefaultEnabled);
             report.AppendLine(
-                $"- Tools/Custom Navigation/Navigation Highlight: " +
+                $"- Scene Preview/Navigation Highlight: " +
                 $"{(NavigationHighlightSettings.Enabled ? "ON" : "OFF")} " +
                 $"(EditorPrefs '{NavigationHighlightSettings.EnabledPreferenceKey}'={storedValue})");
             if (!NavigationHighlightSettings.Enabled)
             {
                 report.AppendLine(
-                    "  FIX: enable Tools > Custom Navigation > Navigation Highlight.");
+                    "  FIX: enable Scene Preview in Preferences > DataSakura > " +
+                    "Custom Navigation > Scene Preview, or from the Custom Navigation window.");
             }
         }
 
