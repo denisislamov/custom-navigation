@@ -40,6 +40,7 @@ namespace CustomNavigation.Authoring
             defaultAgentProfile = agentProfile;
             areaCatalog = catalog;
             performanceProfile = mobilePerformance;
+            SynchronizeBuildSettingsWithAgent();
         }
 
         private void Reset()
@@ -51,6 +52,16 @@ namespace CustomNavigation.Authoring
         {
             levelId = NavigationIdUtility.Sanitize(levelId, "new_level");
             description = string.IsNullOrWhiteSpace(description) ? string.Empty : description.Trim();
+            SynchronizeBuildSettingsWithAgent();
+        }
+
+        /// <summary>
+        /// Keeps programmatic setup and Unity's serialized validation on the same bake settings.
+        /// Without this, the first bake after ConfigureDefaults can use constructor defaults while
+        /// later bakes use the agent-driven preset applied by OnValidate.
+        /// </summary>
+        private void SynchronizeBuildSettingsWithAgent()
+        {
             buildSettings ??= new NavigationBuildSettings();
             if (defaultAgentProfile != null)
             {

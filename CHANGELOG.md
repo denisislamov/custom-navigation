@@ -4,6 +4,15 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.15] - 2026-08-28
+
+### Fixed
+- Synchronized agent-driven `NavigationBuildSettings` during programmatic
+  `NavigationLevel.ConfigureDefaults(...)`, so the first bake and later post-refresh bakes use
+  identical voxel settings, artifact bytes, and SHA-256 for unchanged geometry.
+- Replaced the package layout test's stale exact-version assertion with semantic-version
+  validation so patch releases do not fail an unrelated migration contract.
+
 ## [0.6.14] - 2026-08-28
 
 ### Added

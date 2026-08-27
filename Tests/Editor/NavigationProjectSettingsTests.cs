@@ -73,6 +73,32 @@ namespace CustomNavigation.Editor.Tests
         }
 
         [Test]
+        public void ConfigureDefaultsAppliesAgentDrivenPresetBeforeTheFirstBake()
+        {
+            var root = new GameObject("CN first-bake settings test");
+            var agent = ScriptableObject.CreateInstance<NavigationAgentProfile>();
+            var areas = ScriptableObject.CreateInstance<NavigationAreaCatalog>();
+            var performance = ScriptableObject.CreateInstance<NavigationPerformanceProfile>();
+            try
+            {
+                NavigationLevel level = root.AddComponent<NavigationLevel>();
+                level.ConfigureDefaults(agent, areas, performance);
+
+                Assert.That(level.BuildSettings.CellSize,
+                    Is.EqualTo(agent.Radius / 3f).Within(0.000001f));
+                Assert.That(level.BuildSettings.CellHeight,
+                    Is.EqualTo(agent.MaximumClimb * 0.5f).Within(0.000001f));
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+                Object.DestroyImmediate(agent);
+                Object.DestroyImmediate(areas);
+                Object.DestroyImmediate(performance);
+            }
+        }
+
+        [Test]
         public void CreateMissingDefaultsPreservesExistingProfileAndIsIdempotent()
         {
             NavigationProjectSettings settings =

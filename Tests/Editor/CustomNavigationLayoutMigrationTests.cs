@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using CustomNavigation.Editor;
 using NUnit.Framework;
 using UnityEditor;
@@ -30,7 +31,12 @@ namespace CustomNavigation.Editor.Tests
             PackageManifest manifest = JsonUtility.FromJson<PackageManifest>(json);
 
             Assert.That(manifest.name, Is.EqualTo("com.datasakura.custom-navigation"));
-            Assert.That(manifest.version, Is.EqualTo("0.6.13"));
+            Assert.That(
+                Regex.IsMatch(
+                    manifest.version ?? string.Empty,
+                    @"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"),
+                Is.True,
+                "The package version must be semantic rather than pinned to an old release.");
             Assert.That(manifest.displayName, Is.EqualTo("DataSakura Custom Navigation"));
             Assert.That(manifest.samples, Has.Length.EqualTo(1));
             Assert.That(manifest.samples[0].displayName, Is.EqualTo("Navigation Demos & Bots"));
