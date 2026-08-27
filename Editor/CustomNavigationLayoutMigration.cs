@@ -114,21 +114,6 @@ namespace CustomNavigation.Editor
             return new CustomNavigationLayoutMigrationResult(true, messages);
         }
 
-        [MenuItem("Tools/Custom Navigation/Migrate pre-0.6.6 project folders", priority = 190)]
-        private static void MigrateFromMenu()
-        {
-            CustomNavigationLayoutMigrationResult result = Migrate();
-            string report = string.Join("\n", result.Messages);
-            if (result.Succeeded)
-            {
-                UnityEngine.Debug.Log("[CustomNavigation] " + report);
-            }
-            else
-            {
-                UnityEngine.Debug.LogError("[CustomNavigation] " + report);
-            }
-        }
-
         private static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path))

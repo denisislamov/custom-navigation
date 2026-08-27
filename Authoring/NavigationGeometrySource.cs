@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Geometry Source")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Geometry Source")]
     public sealed class NavigationGeometrySource : MonoBehaviour
     {
         [SerializeField, Tooltip("Include adds the mesh to the bake, Block blocks its bounds, Ignore keeps it visual only.")]

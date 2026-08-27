@@ -6,7 +6,7 @@ namespace CustomNavigation.Authoring
 {
     [CreateAssetMenu(
         fileName = "NavigationAgentProfile",
-        menuName = "Custom Navigation/Agent Profile")]
+        menuName = "DataSakura/Custom Navigation/Agent Profile")]
     public sealed class NavigationAgentProfile : ScriptableObject
     {
         [SerializeField, Tooltip("Stable profile id. Must match on the client and on the server.")]

@@ -4,7 +4,7 @@ using UnityEngine.Serialization;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Navigation Link")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Navigation Link")]
     public sealed class NavigationLink : MonoBehaviour
     {
         [SerializeField, Tooltip("Stable link id used by the artifact, the gameplay and diagnostics.")]

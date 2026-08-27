@@ -11,7 +11,7 @@ namespace CustomNavigation.Runtime
     /// DotRecastHybridPredicted.
     /// Can be used as a prefab: assigning the scheduler and the route in the Inspector is enough.
     /// </summary>
-    [AddComponentMenu("Custom Navigation/Bot Agent")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Bot Agent")]
     public sealed class NavigationBotAgent : MonoBehaviour
     {
         // ── Inspector ─────────────────────────────────────────────────────────

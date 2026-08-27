@@ -4,7 +4,7 @@ using UnityEngine.Serialization;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Modifier Volume")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Modifier Volume")]
     public sealed class NavigationModifierVolume : MonoBehaviour
     {
         [SerializeField, Tooltip("Block makes the volume impassable; Include overrides the surface type inside the volume.")]

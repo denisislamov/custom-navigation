@@ -2,9 +2,6 @@ using UnityEngine;
 
 namespace CustomNavigation.Authoring
 {
-    [CreateAssetMenu(
-        fileName = "NavigationArtifact",
-        menuName = "Custom Navigation/Navigation Artifact")]
     public sealed class NavigationArtifactAsset : ScriptableObject
     {
         [SerializeField, Tooltip("Level id written by the editor exporter. Do not edit by hand.")]

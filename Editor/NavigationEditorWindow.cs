@@ -12,22 +12,20 @@ namespace CustomNavigation.Editor
 {
     public sealed class NavigationEditorWindow : EditorWindow
     {
-        private static readonly string[] Tabs =
+        internal static readonly string[] Tabs =
         {
             "Overview",
-            "Sources",
-            "Build & Budgets",
-            "Tools",
-            "Server",
-            "Artifacts"
+            "Geometry",
+            "Bake",
+            "Settings",
+            "Diagnostics"
         };
 
         private const int OverviewTab = 0;
-        private const int SourcesTab = 1;
-        private const int BuildTab = 2;
-        private const int ToolsTab = 3;
-        private const int ServerTab = 4;
-        private const int ArtifactsTab = 5;
+        private const int GeometryTab = 1;
+        private const int BakeTab = 2;
+        private const int SettingsTab = 3;
+        private const int DiagnosticsTab = 4;
 
         private const string GeneratedSettingsFolder = "Assets/DataSakura/CustomNavigation/Generated/Settings";
 
@@ -75,7 +73,9 @@ namespace CustomNavigation.Editor
 
         private List<NavigationArtifactComparison> artifactComparisons;
 
-        [MenuItem("Tools/Custom Navigation/Navigation Editor", priority = 100)]
+        internal const string MainMenuPath = "Tools/DataSakura/Custom Navigation";
+
+        [MenuItem(MainMenuPath, priority = 100)]
         public static void Open()
         {
             var window = GetWindow<NavigationEditorWindow>();
@@ -87,14 +87,14 @@ namespace CustomNavigation.Editor
         public static void OpenServerTab()
         {
             Open();
-            GetWindow<NavigationEditorWindow>().selectedTab = ServerTab;
+            GetWindow<NavigationEditorWindow>().selectedTab = SettingsTab;
         }
 
         public static void OpenArtifactsTab()
         {
             Open();
             var window = GetWindow<NavigationEditorWindow>();
-            window.selectedTab = ArtifactsTab;
+            window.selectedTab = DiagnosticsTab;
             window.RefreshArtifacts();
         }
 
@@ -103,6 +103,7 @@ namespace CustomNavigation.Editor
             Selection.selectionChanged += OnSelectionChanged;
             serverRequestPending = false;
             probeRequestPending = false;
+            selectedTab = Mathf.Clamp(selectedTab, 0, Tabs.Length - 1);
             TrySelectLevelFromContext();
             // Validation does NOT run automatically: an honest "not evaluated"
             // state is shown until the user presses Validate.
@@ -122,10 +123,7 @@ namespace CustomNavigation.Editor
             selectedTab = GUILayout.Toolbar(selectedTab, Tabs);
             EditorGUILayout.Space(6f);
 
-            bool levelRequired = selectedTab == OverviewTab
-                                 || selectedTab == SourcesTab
-                                 || selectedTab == BuildTab
-                                 || selectedTab == ToolsTab;
+            bool levelRequired = selectedTab != DiagnosticsTab;
             if (levelRequired)
             {
                 DrawLevelSelector();
@@ -140,20 +138,17 @@ namespace CustomNavigation.Editor
 
             switch (selectedTab)
             {
-                case SourcesTab:
+                case GeometryTab:
                     DrawSources();
                     break;
-                case BuildTab:
-                    DrawBuildAndBudgets();
+                case BakeTab:
+                    DrawBuildStatus();
                     break;
-                case ToolsTab:
-                    DrawTools();
+                case SettingsTab:
+                    DrawSettings();
                     break;
-                case ServerTab:
-                    DrawServerSettings();
-                    break;
-                case ArtifactsTab:
-                    DrawArtifacts();
+                case DiagnosticsTab:
+                    DrawDiagnostics();
                     break;
                 default:
                     DrawOverview();
@@ -162,6 +157,74 @@ namespace CustomNavigation.Editor
 
             EditorGUILayout.EndScrollView();
             RunPendingAction();
+        }
+
+        private void DrawSettings()
+        {
+            DrawLevelSettings();
+            EditorGUILayout.Space(8f);
+            DrawAssetReferences();
+            EditorGUILayout.Space(10f);
+            DrawBuildAndBudgets();
+            EditorGUILayout.Space(12f);
+            DrawServerSettings();
+        }
+
+        private void DrawDiagnostics()
+        {
+            DrawLevelSelector();
+            if (selectedLevel != null)
+            {
+                DrawTools();
+                EditorGUILayout.Space(12f);
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "Select a Navigation Level to use path probes and navmesh analysis.",
+                    MessageType.None);
+            }
+
+            DrawArtifacts();
+            EditorGUILayout.Space(12f);
+            DrawLayoutMigration();
+        }
+
+        private static void DrawLayoutMigration()
+        {
+            EditorGUILayout.LabelField("Project layout migration", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "Preview the pre-0.6.6 folder migration before running it. The command is explicit, " +
+                "idempotent, and uses AssetDatabase.MoveAsset to preserve GUIDs and references.",
+                MessageType.None);
+
+            if (!GUILayout.Button("Preview / Run pre-0.6.6 Migration", GUILayout.Height(26f)))
+            {
+                return;
+            }
+
+            bool confirmed = EditorUtility.DisplayDialog(
+                "Custom Navigation layout migration",
+                "This will look for the legacy Assets/CustomNavigation layout and move it to " +
+                "Assets/DataSakura/CustomNavigation when there is no conflict. Nothing is changed " +
+                "when the legacy layout is absent. Continue?",
+                "Run Migration",
+                "Cancel");
+            if (!confirmed)
+            {
+                return;
+            }
+
+            CustomNavigationLayoutMigrationResult result = CustomNavigationLayoutMigration.Migrate();
+            string report = string.Join("\n", result.Messages);
+            if (result.Succeeded)
+            {
+                Debug.Log("[CustomNavigation] " + report);
+            }
+            else
+            {
+                Debug.LogError("[CustomNavigation] " + report);
+            }
         }
 
         /// <summary>
@@ -333,13 +396,7 @@ namespace CustomNavigation.Editor
             }
 
             EditorGUILayout.Space(8f);
-            DrawLevelSettings();
-            EditorGUILayout.Space(8f);
-            DrawAssetReferences();
-            EditorGUILayout.Space(8f);
             DrawValidation();
-            EditorGUILayout.Space(8f);
-            DrawBuildStatus();
         }
 
         private void DrawLevelSettings()
@@ -674,7 +731,7 @@ namespace CustomNavigation.Editor
                     "The level is not ready to build.\n\nFirst error:\n" +
                     validationReport.DescribeFirstError() +
                     $"\n\nTotal errors: {validationReport.ErrorCount}. " +
-                    "The list with Select and Fix buttons is in the Overview -> Validation tab.",
+                    "The list with Select and Fix buttons is in Overview -> Validation.",
                     "Got it");
                 selectedTab = OverviewTab;
                 return;
@@ -1135,8 +1192,6 @@ namespace CustomNavigation.Editor
                     AssignPerformanceProfile(profile);
                 }
 
-                EditorGUILayout.Space(8f);
-                DrawBuildStatus();
                 return;
             }
 
@@ -1149,8 +1204,6 @@ namespace CustomNavigation.Editor
                 DestroyImmediate(profileEditor);
             }
 
-            EditorGUILayout.Space(8f);
-            DrawBuildStatus();
         }
 
         // ── Tools tab ─────────────────────────────────────────────────────────
@@ -1177,7 +1230,7 @@ namespace CustomNavigation.Editor
             {
                 EditorGUILayout.HelpBox(
                     "There is no built artifact for this level. Run Build for Client " +
-                    "in the Build & Budgets tab.",
+                    "in the Bake section.",
                     MessageType.Warning);
             }
 
@@ -1667,7 +1720,7 @@ namespace CustomNavigation.Editor
             DrawArtifactFolderTools(settings);
 
             EditorGUILayout.HelpBox(
-                "The navmesh is baked offline in Unity (the Build & Budgets tab -> Build for Client). " +
+                "The navmesh is baked offline in Unity (the Bake section -> Build for Client). " +
                 "The server bakes nothing: it only loads the uploaded artifact and answers POST /path.",
                 MessageType.None);
 
@@ -1738,7 +1791,7 @@ namespace CustomNavigation.Editor
         {
             EditorGUILayout.LabelField("Artifact upload", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "Upload to Server (Build & Budgets tab) pushes the baked navmesh over HTTP, so " +
+                "Upload to Server (Bake section) pushes the baked navmesh over HTTP, so " +
                 "the server does not have to share a file system with this machine.\n" +
                 "A server bound to 127.0.0.1 accepts uploads from this machine without a token. " +
                 "One listening on the network refuses them unless it was started with " +
@@ -2097,7 +2150,7 @@ namespace CustomNavigation.Editor
             if (artifactComparisons.Count == 0)
             {
                 EditorGUILayout.HelpBox(
-                    "There are no built maps. Build the navigation in the Build & Budgets tab.",
+                    "There are no built maps. Build the navigation in the Bake section.",
                     MessageType.Warning);
                 return;
             }

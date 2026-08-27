@@ -6,7 +6,7 @@ namespace CustomNavigation.Runtime
 {
     [DefaultExecutionOrder(-500)]
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Query Scheduler")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Query Scheduler")]
     public sealed class NavigationQuerySchedulerBehaviour : MonoBehaviour
     {
         [SerializeField, Tooltip("Prebuilt navmesh artifact. The runtime loads it without a Recast bake.")]

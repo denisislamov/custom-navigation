@@ -4,7 +4,7 @@ using UnityEngine;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Navigation Portal")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Navigation Portal")]
     public sealed class NavigationPortal : MonoBehaviour
     {
         [SerializeField, Tooltip("Stable portal id used by the runtime state, networking and telemetry.")]

@@ -3,7 +3,7 @@ using UnityEngine;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Navigation Test Point")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Navigation Test Point")]
     public sealed class NavigationTestPoint : MonoBehaviour
     {
         [SerializeField, Tooltip("Stable test point id used by validation and reports.")]

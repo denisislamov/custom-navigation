@@ -4,6 +4,23 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.7] - 2026-08-27
+
+### Changed
+- Added the single `Tools/DataSakura/Custom Navigation` entry and reorganized the authoring
+  window into `Overview`, `Geometry`, `Bake`, `Settings`, and `Diagnostics` sections while
+  preserving the public automation entrypoints.
+- Grouped Create Asset, Add Component, and sample prefab commands under
+  `DataSakura/Custom Navigation`; generated navigation artifacts are no longer offered as
+  hand-created configuration assets.
+- Reworked the `NavigationLevel` Inspector into compact Level, Geometry Root, Settings, and
+  Bake Status blocks with `Validate / Bake / Open` actions and an Advanced foldout.
+- Moved the explicit pre-0.6.6 project layout migration from the Tools menu into Diagnostics.
+
+### Tests
+- Added EditMode coverage for the agreed menu paths, window sections, automation entrypoints,
+  authoring menu groups, generated-artifact behavior, and side-effect-free window open/close.
+
 ## [0.6.6] - 2026-08-25
 
 ### Changed

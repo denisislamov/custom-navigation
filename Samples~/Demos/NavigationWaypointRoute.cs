@@ -16,7 +16,7 @@ namespace CustomNavigation.Runtime
     /// Add child Transforms (or references to any Transform in the scene)
     /// - the route is drawn in the Scene View while the navigation highlight is on.
     /// </summary>
-    [AddComponentMenu("Custom Navigation/Waypoint Route")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Waypoint Route")]
     [DisallowMultipleComponent]
     public sealed class NavigationWaypointRoute : MonoBehaviour
     {

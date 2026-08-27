@@ -50,7 +50,7 @@ namespace CustomNavigation.Authoring
 
     [CreateAssetMenu(
         fileName = "NavigationAreaCatalog",
-        menuName = "Custom Navigation/Area Catalog")]
+        menuName = "DataSakura/Custom Navigation/Area Catalog")]
     public sealed class NavigationAreaCatalog : ScriptableObject
     {
         [SerializeField, Tooltip("Project surface catalog. Defines highlight color, cost and allowed movement types.")]

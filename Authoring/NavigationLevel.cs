@@ -4,7 +4,7 @@ using UnityEngine;
 namespace CustomNavigation.Authoring
 {
     [DisallowMultipleComponent]
-    [AddComponentMenu("Custom Navigation/Navigation Level")]
+    [AddComponentMenu("DataSakura/Custom Navigation/Navigation Level")]
     public sealed class NavigationLevel : MonoBehaviour
     {
         [SerializeField, Tooltip("Stable level id used by artifacts, the API and the server load path.")]

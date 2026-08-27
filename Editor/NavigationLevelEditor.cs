@@ -12,6 +12,8 @@ namespace CustomNavigation.Editor
 
         private string lastBakeMessage;
         private MessageType lastBakeMessageType = MessageType.None;
+        private NavigationValidationReport validationReport = NavigationValidationReport.NotEvaluated;
+        private bool showAdvanced;
 
         public override void OnInspectorGUI()
         {
@@ -19,20 +21,34 @@ namespace CustomNavigation.Editor
             var level = (NavigationLevel)target;
 
             NavigationInspectorGUI.Header("Level");
-            NavigationInspectorGUI.DrawProperties(serializedObject, "levelId", "description", "geometryRoot");
+            NavigationInspectorGUI.DrawProperties(serializedObject, "levelId");
+
+            NavigationInspectorGUI.Header("Geometry Root");
+            NavigationInspectorGUI.DrawProperties(serializedObject, "geometryRoot");
 
             NavigationInspectorGUI.Header("Settings");
             DrawSetupSection(level);
 
-            NavigationInspectorGUI.Header("Bake quality");
-            NavigationInspectorGUI.DrawBuildSettings(
-                serializedObject.FindProperty("buildSettings"),
-                "NavigationLevel.BuildSettings");
-
             serializedObject.ApplyModifiedProperties();
 
-            EditorGUILayout.Space(10f);
-            DrawBakeSection(level);
+            NavigationInspectorGUI.Header("Bake Status");
+            DrawBakeStatus(level);
+            DrawPrimaryActions(level);
+
+            EditorGUILayout.Space(6f);
+            showAdvanced = EditorGUILayout.Foldout(showAdvanced, "Advanced", true);
+            if (showAdvanced)
+            {
+                EditorGUI.indentLevel++;
+                serializedObject.Update();
+                NavigationInspectorGUI.DrawProperties(serializedObject, "description");
+                NavigationInspectorGUI.DrawBuildSettings(
+                    serializedObject.FindProperty("buildSettings"),
+                    "NavigationLevel.BuildSettings");
+                serializedObject.ApplyModifiedProperties();
+                DrawAdvancedActions(level);
+                EditorGUI.indentLevel--;
+            }
         }
 
         private void DrawSetupSection(NavigationLevel level)
@@ -62,47 +78,80 @@ namespace CustomNavigation.Editor
             }
         }
 
-        private void DrawBakeSection(NavigationLevel level)
+        private void DrawBakeStatus(NavigationLevel level)
         {
-            bool ready = level.IsReadyToBake(out string reason);
-            if (!ready)
+            NavigationArtifactAsset artifact = NavigationArtifactBuilder.LoadClientArtifact(level.LevelId);
+            if (artifact == null)
             {
-                EditorGUILayout.HelpBox(reason, MessageType.Warning);
+                EditorGUILayout.HelpBox("Not baked", MessageType.None);
             }
-
-            NavigationArtifactAsset builtArtifact = NavigationArtifactBuilder.LoadClientArtifact(level.LevelId);
-
-            using (new EditorGUI.DisabledScope(!ready))
-            {
-                if (GUILayout.Button("Bake for Client", GUILayout.Height(32f)))
-                {
-                    BuildForClient(level);
-                }
-            }
-
-            using (new EditorGUI.DisabledScope(builtArtifact == null))
-            {
-                if (GUILayout.Button("Export for Server", GUILayout.Height(26f)))
-                {
-                    ExportForServer(level);
-                }
-            }
-
-            if (builtArtifact == null)
+            else
             {
                 EditorGUILayout.HelpBox(
-                    "The client artifact is not built yet - run Bake for Client first.",
-                    MessageType.None);
+                    $"Ready · {artifact.PolygonCount} polygons · " +
+                    NavigationArtifactIndex.Short(artifact.ArtifactHash),
+                    MessageType.Info);
+            }
+
+            if (validationReport.Evaluated)
+            {
+                MessageType type = validationReport.HasErrors ? MessageType.Error
+                    : validationReport.WarningCount > 0 ? MessageType.Warning
+                    : MessageType.Info;
+                string message = validationReport.HasErrors
+                    ? $"Validation: {validationReport.ErrorCount} error(s). " +
+                      validationReport.DescribeFirstError()
+                    : validationReport.WarningCount > 0
+                        ? $"Validation: {validationReport.WarningCount} warning(s)."
+                        : "Validation: ready.";
+                EditorGUILayout.HelpBox(message, type);
             }
 
             if (!string.IsNullOrEmpty(lastBakeMessage))
             {
                 EditorGUILayout.HelpBox(lastBakeMessage, lastBakeMessageType);
             }
+        }
 
-            if (GUILayout.Button("Open Navigation Editor", EditorStyles.miniButton))
+        private void DrawPrimaryActions(NavigationLevel level)
+        {
+            bool ready = level.IsReadyToBake(out string reason);
+            using (new EditorGUILayout.HorizontalScope())
             {
-                NavigationEditorWindow.Open();
+                if (GUILayout.Button("Validate", GUILayout.Height(28f)))
+                {
+                    validationReport = NavigationValidationReport.Create(level);
+                }
+
+                using (new EditorGUI.DisabledScope(!ready))
+                {
+                    if (GUILayout.Button("Bake", GUILayout.Height(28f)))
+                    {
+                        BuildForClient(level);
+                    }
+                }
+
+                if (GUILayout.Button("Open", GUILayout.Height(28f)))
+                {
+                    NavigationEditorWindow.Open();
+                }
+            }
+
+            if (!ready)
+            {
+                EditorGUILayout.HelpBox(reason, MessageType.Warning);
+            }
+        }
+
+        private void DrawAdvancedActions(NavigationLevel level)
+        {
+            NavigationArtifactAsset builtArtifact = NavigationArtifactBuilder.LoadClientArtifact(level.LevelId);
+            using (new EditorGUI.DisabledScope(builtArtifact == null))
+            {
+                if (GUILayout.Button("Export for Server", EditorStyles.miniButton))
+                {
+                    ExportForServer(level);
+                }
             }
         }
 
@@ -111,6 +160,7 @@ namespace CustomNavigation.Editor
             try
             {
                 NavigationArtifactBuildResult result = NavigationArtifactBuilder.BuildForClient(level);
+                validationReport = NavigationValidationReport.Create(level);
                 lastBakeMessage =
                     $"Bake finished.\nPolygons: {result.PolygonCount}\nSource meshes: {result.SourceMeshCount}\nHash: {result.Hash}";
                 lastBakeMessageType = MessageType.Info;

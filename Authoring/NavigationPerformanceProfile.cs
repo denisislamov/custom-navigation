@@ -4,7 +4,7 @@ namespace CustomNavigation.Authoring
 {
     [CreateAssetMenu(
         fileName = "NavigationPerformanceProfile",
-        menuName = "Custom Navigation/Performance Profile")]
+        menuName = "DataSakura/Custom Navigation/Performance Profile")]
     public sealed class NavigationPerformanceProfile : ScriptableObject
     {
         [SerializeField, Tooltip("Target mobile device class. The preset sets starting values, not guarantees.")]

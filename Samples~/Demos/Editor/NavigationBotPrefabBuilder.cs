@@ -5,7 +5,7 @@ using UnityEngine;
 namespace CustomNavigation.Editor
 {
     /// <summary>
-    /// Tools → Custom Navigation → Create Navigation Bot Prefab
+    /// Assets → Create → DataSakura → Custom Navigation → Demo Bot Prefabs
     /// Creates the bot prefab and a sample NavigationWaypointRoute in Generated/BotAgent.
     /// After creation:
     /// 1. Drag NavigationBotAgent.prefab into the scene.
@@ -20,7 +20,7 @@ namespace CustomNavigation.Editor
         private const string RoutePrefabPath = OutputFolder + "/NavigationWaypointRoute.prefab";
         private const string MaterialPath = OutputFolder + "/BotAgent.mat";
 
-        [MenuItem("Tools/Custom Navigation/Create Bot Agent Prefab", priority = 160)]
+        [MenuItem("Assets/Create/DataSakura/Custom Navigation/Demo Bot Prefabs", priority = 260)]
         public static void CreateBotAgentPrefab()
         {
             EnsureFolder(OutputFolder);

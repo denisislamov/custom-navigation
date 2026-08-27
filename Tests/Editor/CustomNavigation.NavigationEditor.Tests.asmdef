@@ -2,7 +2,9 @@
   "name": "CustomNavigation.NavigationEditor.Tests",
   "rootNamespace": "CustomNavigation.Editor.Tests",
   "references": [
-    "CustomNavigation.NavigationEditor"
+    "CustomNavigation.NavigationEditor",
+    "CustomNavigation.Authoring",
+    "CustomNavigation.Runtime"
   ],
   "includePlatforms": [
     "Editor"
