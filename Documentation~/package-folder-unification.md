@@ -1,4 +1,4 @@
-# Package folder unification handoff (0.6.6)
+# Миграция project folders, введённая в 0.6.6
 
 Date: 2026-08-25
 
@@ -36,8 +36,9 @@ Assets/
 
 - Unity Package Manager remains the only sample importer. The package source stays at
   `Samples~/Demos`; no post-import mover or second sample copy is created.
-- Upgrade is an explicit action: **Tools > Custom Navigation > Migrate pre-0.6.6 project
-  folders**.
+- Upgrade is an explicit action: откройте **Tools > DataSakura > Custom Navigation
+  Window**, перейдите в **Diagnostics** и нажмите **Preview / Run pre-0.6.6
+  Migration**.
 - Both the product-root move and `Scene` to `Scenes` rename use
   `AssetDatabase.MoveAsset`, preserving folder and child asset GUIDs.
 - Re-running migration is a no-op. A partially completed scene-folder rename is finished

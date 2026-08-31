@@ -4,6 +4,21 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.16] - 2026-08-31
+
+### Added
+- Added a complete Russian documentation set for installation, a 5–15 minute clean-scene
+  Quick Start, architecture, every current Editor surface, configuration, Runtime and Editor
+  APIs, integration, extension points, recipes, troubleshooting, and safe upgrades.
+
+### Changed
+- Replaced stale menu paths, version pins, artifact names, and release-status claims in the
+  package and reference-server documentation with the current 0.6.16 behavior.
+
+### Compatibility
+- Runtime behavior, public API, serialized fields, assembly names, artifact schema, DotRecast
+  version, and server wire contract are unchanged from 0.6.15.
+
 ## [0.6.15] - 2026-08-28
 
 ### Fixed

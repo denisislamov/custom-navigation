@@ -1,45 +1,52 @@
-# Navigation artifact filenames and migration
+# Имена navigation artifacts и миграция
 
-Current client builds stay under
-`Assets/DataSakura/CustomNavigation/Generated/Navigation` and use one stable set per level:
+Новые client builds хранятся в
+`Assets/DataSakura/CustomNavigation/Generated/Navigation` и используют одну стабильную
+тройку на `levelId`:
 
-- `<levelId>.navigation.bytes`
-- `<levelId>.navigation.manifest.json`
-- `<levelId>.navigation.asset`
+- `<levelId>.navigation.bytes`;
+- `<levelId>.navigation.manifest.json`;
+- `<levelId>.navigation.asset`.
 
-For example: `npi_multiplayer_test.navigation.bytes`.
+Например: `arena_01.navigation.bytes`.
 
-The filename is descriptive only. Content identity remains the complete lowercase SHA-256 in
-the manifest and `NavigationArtifactAsset`; client and server loaders recompute it before using
-the payload. Schema `1`, runtime level identity, DotRecast format, and canonical payload bytes are
-unchanged. Level description, UI label, file timestamp, profile changes, and display name are not
-written into canonical bytes.
+Имя удобно человеку, но не определяет содержимое. Идентичность остаётся полным
+lowercase SHA-256 в manifest и `NavigationArtifactAsset`; loader пересчитывает hash до
+использования payload. Schema `1`, DotRecast format `2026.1.3` и canonical bytes не
+зависят от UI label, timestamp или имени файла.
 
-## Explicit migration
+## Явная миграция legacy filenames
 
-Open **Custom Navigation > Diagnostics > Artifact Filename Migration**. The operation:
+Откройте `Tools > DataSakura > Custom Navigation Window > Diagnostics` и нажмите
+`Preview / Run Artifact Filename Migration`.
 
-1. scans existing generated `NavigationArtifactAsset` files;
-2. verifies each payload against its full SHA-256 and rejects duplicate destinations;
-3. moves payload, manifest, and asset with `AssetDatabase.MoveAsset`;
-4. updates the manifest `fileName` and the asset references together;
-5. preserves all three Unity GUIDs and the exact payload bytes.
+Операция:
 
-The migration is idempotent. A partially completed GUID-preserving move can be run again. It
-does not touch files outside the generated navigation root and does not silently merge two levels
-that resolve to the same stable filename.
+1. сканирует generated `NavigationArtifactAsset`;
+2. проверяет каждый payload по полному SHA-256 и заранее отклоняет destination
+   conflicts;
+3. переносит payload, manifest и asset через `AssetDatabase.MoveAsset`;
+4. одновременно обновляет `fileName` в manifest и serialized asset references;
+5. сохраняет GUID всех трёх assets и точные payload bytes.
 
-Legacy `.navmesh.bytes` artifacts remain loadable and exportable before migration. A new build
-will ask for the explicit migration instead of creating a competing second asset for the same
-level.
+Migration идемпотентна: повторный запуск после полного или частично завершённого
+GUID-safe move должен стать no-op или закончить недостающий шаг. Она не merge-ит два
+уровня с одинаковым target path и не трогает файлы вне generated navigation root.
 
-## Export safety
+Legacy `.navmesh.bytes` остаются читаемыми и экспортируемыми. Новый build просит
+выполнить explicit migration вместо создания второй конкурирующей тройки для того же
+уровня.
 
-Folder export and HTTP upload validate schema, DotRecast version, full SHA-256, polygon count,
-and a plain supported `fileName`. Payload, level manifest, and optional `active.manifest.json` are
-first written to temporary files. If committing any file fails, previous files are restored and
-temporary files are removed, so an active incomplete pair is not left behind.
+## Безопасность export/upload
 
-The current stable filename represents the current export of one level in a folder. To retain
-several exports, use clearly named build folders and the same stable filenames inside each one.
-No address catalog or new generated-root hierarchy is introduced.
+Folder export и HTTP upload проверяют schema, DotRecast version, SHA-256, polygon count
+и простое поддерживаемое `fileName`. Payload, level manifest и optional
+`active.manifest.json` сначала записываются во временные файлы; при ошибке предыдущие
+файлы восстанавливаются.
+
+Stable name представляет текущий export уровня в одной папке. Если нужно сохранить
+несколько сборок одного уровня, используйте отдельные versioned folders, сохраняя те же
+имена внутри.
+
+См. [Migration and upgrading](migration-and-upgrading.md) и
+[Troubleshooting](troubleshooting.md).

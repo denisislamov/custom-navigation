@@ -1,21 +1,30 @@
-# DotRecast navigation server
+# DotRecast Navigation Server
 
-Standalone .NET 9 HTTP-сервис находится рядом с `Assets`. Он не загружает Unity assemblies/scene data, не использует Unity Physics и не строит navmesh при запуске. Сервер читает готовый Detour artifact, экспортированный из Unity Editor.
+После явной установки standalone .NET 9 HTTP-сервис находится в
+`<project>/NavigationServer`, рядом с `Assets`. Он не загружает Unity assemblies или
+scene data, не использует Unity Physics и не строит navmesh при запуске. Сервер читает
+готовый Detour artifact, созданный в Unity Editor.
 
 > Разработчику, который будет **менять** серверный код: см. [`ONBOARDING.md`](ONBOARDING.md)
 > рядом — устройство модулей, полный контракт API, ограничения и чеклист граблей.
 
 ## Подготовка данных
 
-1. Откройте уровень в Unity.
-2. Откройте `Tools > Custom Navigation > Navigation Editor`.
-3. Проверьте `NavigationLevel`, sources, agent и performance profile.
-4. Нажмите `Build for Client`, затем `Export for Server`.
+1. Откройте уровень в Unity и выберите его `NavigationLevel`.
+2. Откройте `Tools > DataSakura > Custom Navigation Window`.
+3. На вкладке `Overview` нажмите `Validate` и устраните ошибки.
+4. На вкладке `Bake` нажмите `Build for Client`.
+5. Для удалённого сервера нажмите `Upload to Server`; для локальной общей папки —
+   `Export to Folder`.
 
-Один и тот же бинарный navmesh будет записан в:
+`Build for Client` записывает клиентскую копию в:
 
-- `Assets/DataSakura/CustomNavigation/Generated/Navigation` для локального клиента;
-- `NavigationServer/NavigationData` для сервера.
+```text
+Assets/DataSakura/CustomNavigation/Generated/Navigation
+```
+
+`Upload to Server` отправляет те же байты по HTTP. `Export to Folder` записывает их в
+`NavigationServer/NavigationData` по умолчанию либо в выбранный `Server Artifact Folder`.
 
 ## Как доставить артефакт на сервер
 
@@ -36,8 +45,8 @@ navmesh прямо на адрес из `NavigationServerSettings`. Работа
 ./NavigationServer/run-server.sh --listen 'http://*:5079/' --upload-token 'секрет'
 ```
 
-Тот же секрет вводится в поле `Upload token` во вкладке `Server`. Он хранится в
-EditorPrefs, а не в ассете, поэтому не попадает в билд игры.
+Тот же секрет вводится в `Settings` → `Artifact upload` → `Upload token`. Он хранится
+в EditorPrefs, а не в ассете, поэтому не попадает в билд игры.
 
 **2. Запись в папку.** Кнопка `Export to Folder` кладёт файлы в
 `NavigationServer/NavigationData`. Годится только для сервера на этой же машине.
@@ -50,40 +59,44 @@ EditorPrefs, а не в ассете, поэтому не попадает в б
 1. Если в теле `POST /path` задан `levelId` — берётся карта с таким `levelId` из манифеста.
    Для legacy-набора с несколькими hash-based экспортами одного уровня выбирается самый свежий
    по времени записи. Текущий формат хранит один стабильный файл уровня в каждой папке сборки.
-2. Если `levelId` не задан — берётся `active.manifest.json`. Его перезаписывает каждый
-   `Export for Server`, поэтому «активной» становится последняя выгруженная карта.
+2. Если `levelId` не задан — берётся `active.manifest.json`. Его обновляет каждый
+   `Upload to Server` или `Export to Folder`, поэтому «активной» становится последняя
+   доставленная карта.
    Это поведение по умолчанию для игры с одним уровнем.
 3. Если `active.manifest.json` нет, но экспортирована ровно одна карта — берётся она.
 
 Карты загружаются лениво и кэшируются. Кэш сбрасывается по времени изменения манифеста,
-поэтому после повторного `Export for Server` сервер подхватывает новые данные **без
-перезапуска**. При загрузке проверяются schema version, DotRecast version, SHA-256
-artifact и число полигонов.
+поэтому после повторного `Upload to Server` или `Export to Folder` сервер подхватывает
+новые данные **без перезапуска**. При загрузке проверяются schema version, DotRecast
+version, SHA-256 artifact и число полигонов.
 
 Текущая пара называется `<level>.navigation.bytes` +
 `<level>.navigation.manifest.json`. Если нужно сохранить несколько экспортов одного уровня,
 используйте отдельные понятные папки сборок и одинаковые имена внутри; отдельный address catalog
 для этого не нужен.
 
-Отсутствие артефактов — не ошибка: сервер стартует, слушает порт и сообщает об этом в[startup] Loading the exported DotRecast artifact...
-Unhandled exception. System.IO.FileNotFoundException: Navigation manifest was not found. Export navigation from Unity first.
-File name: '/Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/NavigationData/active.manifest.json'
-at DotRecastServer.Navigation.NavigationArtifactStore.Load(String manifestPath, JsonSerializerOptions jsonOptions) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Navigation/NavigationArtifactStore.cs:line 19
-at Program.<Main>$(String[] args) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Program.cs:line 18
-at Program.<Main>(String[] args)
-[startup] Loading the exported DotRecast artifact...
-Unhandled exception. System.IO.FileNotFoundException: Navigation manifest was not found. Export navigation from Unity first.
-File name: '/Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/NavigationData/active.manifest.json'
-at DotRecastServer.Navigation.NavigationArtifactStore.Load(String manifestPath, JsonSerializerOptions jsonOptions) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Navigation/NavigationArtifactStore.cs:line 19
-at Program.<Main>$(String[] args) in /Users/denisislamov/WorkProjects/Unity/PET/DemoCustomNav/NavigationServer/Program.cs:line 18
-at Program.<Main>(String[] args)
-
-`GET /health` (`status: "no-artifact"`) и в ответе `POST /path`. Это нужно, чтобы можно
-было поднять сервер до первого экспорта из Unity.
+Отсутствие артефактов — не ошибка. Сервер стартует, слушает порт, возвращает
+`status: "no-artifact"` через `GET /health`, а `POST /path` сообщает, что карта ещё не
+загружена. Поэтому сервер можно поднять до первого upload/export из Unity.
 
 ## Запуск
 
-Из корня Unity-проекта:
+### Из Unity Editor
+
+1. Выберите `NavigationLevel` и откройте
+   `Tools > DataSakura > Custom Navigation Window` → `Settings`.
+2. Если settings asset отсутствует, нажмите `Create Navigation Server Settings`.
+3. В секции `Local server` нажмите `Install navigation server`.
+4. Нажмите `Start server`.
+5. В секции `Connection check` нажмите `Check /health`.
+
+Первый запуск выполняет restore/build .NET-проекта и может занять несколько секунд.
+Процесс пишет stdout/stderr в Unity Console и останавливается кнопкой `Stop server` или
+при выходе из Unity.
+
+### Из терминала
+
+После `Install navigation server` выполните из корня Unity-проекта:
 
 ```bash
 ./NavigationServer/run-server.sh
@@ -97,11 +110,12 @@ at Program.<Main>(String[] args)
 ./NavigationServer/run-server.sh --listen 'http://*:5079/'
 ```
 
-В стартовом уровне Unity введите адрес компьютера, например
-`http://192.168.1.10:5079`, и нажмите `Проверить /health`. `127.0.0.1` на телефоне
-указывает на сам телефон, а не на компьютер. Если проверка не проходит, разрешите
-входящие соединения для `dotnet` в firewall и убедитесь, что Wi-Fi не использует
-client/AP isolation.
+В Unity выберите `NavigationLevel`, откройте `DS Navigation` → `Settings`, в секции
+`Navigation server` укажите адрес компьютера, например `http://192.168.1.10:5079`,
+нажмите `Apply`, затем в секции `Connection check` — `Check /health`. `127.0.0.1` на
+телефоне указывает на сам телефон, а не на компьютер. Если проверка не проходит,
+разрешите входящие соединения для `dotnet` в firewall и убедитесь, что Wi-Fi не
+использует client/AP isolation.
 
 Аргументы:
 

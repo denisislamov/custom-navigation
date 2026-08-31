@@ -1,11 +1,10 @@
-# NPI editor integration API
+# Editor API для NPI и внешних инструментов
 
-Custom Navigation remains standalone. Consumer tools such as NPI call the editor-only assembly;
-the package never references the consumer, EFT, a physics package, or a gameplay server.
+Custom Navigation остаётся standalone package. Внешние Editor tools ссылаются на
+assembly `CustomNavigation.NavigationEditor`; пакет не получает reference на consumer,
+EFT, physics package или gameplay server.
 
-## Contract and ownership
-
-Import `CustomNavigation.NavigationEditor` from the consumer's Editor asmdef and use:
+## Identity ownership
 
 ```csharp
 using CustomNavigation.Authoring;
@@ -20,56 +19,49 @@ NavigationEditorResult bake = NavigationEditorApi.Bake(level, managedId);
 NavigationEditorResult current = NavigationEditorApi.ReadSummary(level, managedId);
 ```
 
-`Standalone` uses `NavigationLevel.LevelId`. `External(owner, levelId)` supplies a canonical ID
-for that call only. It does not serialize or otherwise change the standalone ID. Empty owners,
-non-canonical IDs, and an ID already owned by another loaded `NavigationLevel` fail validation;
-`Bake` returns before writing an artifact in those cases.
+`Standalone` использует serialized `NavigationLevel.LevelId`. `External(owner,
+levelId)` передаёт canonical ID только для текущего вызова и не изменяет standalone ID.
+Пустой owner, неканонический ID и конфликт с другим загруженным `NavigationLevel`
+возвращают `Failed` до записи файлов.
 
-`NavigationEditorApi.Bake` is only the navigation bake. It does not export to or start the optional
-HTTP navigation server, trigger physics, or run an NPI pipeline. Existing
-`NavigationBakeCommand.Validate/Execute` entrypoints remain supported for older callers.
+`NavigationEditorApi.Bake` выполняет только navigation bake. Он не запускает/export-ит
+reference server, physics или внешний NPI pipeline.
 
 ## Read-only result
 
-`NavigationEditorResult` exposes:
+`NavigationEditorResult` предоставляет:
 
-- resolved `LevelId`, `Ownership`, and diagnostic `Owner`;
-- `Artifact` reference plus `ArtifactPath`, `PayloadPath`, and `ManifestPath`;
-- full payload `Digest` (lowercase SHA-256);
-- `Status`, `Issues`, and `Succeeded`;
-- payload byte size, polygon count, and source-mesh count when available.
+- `Status`, `Succeeded`, `Issues`;
+- resolved `LevelId`, `Ownership`, diagnostic `Owner`;
+- `Artifact`, `ArtifactPath`, `PayloadPath`, `ManifestPath`;
+- полный payload `Digest`;
+- payload size, polygon count и source mesh count.
 
-`ReadSummary` verifies the payload hash/schema and manifest agreement. It never assigns an ID,
-bakes, imports assets, changes preview settings, or writes files. `Missing` means no current client
-artifact. `Changed` means the saved artifact is valid but current scene/source state is newer; it is
-not considered successful for an NPI export gate. `Failed` means identity, metadata, manifest, or
-payload validation failed.
+`ReadSummary` проверяет loader, manifest и hash, но не пишет файлы. `Missing` означает
+отсутствие asset. `Changed` означает валидный, но потенциально устаревший относительно
+текущей scene/source state artifact. `Failed` означает ошибку identity/metadata/
+manifest/payload.
 
-## Shared preview state
+## Shared preview
 
 ```csharp
-NavigationPreviewState state = NavigationPreviewApi.Current; // read only
-NavigationPreviewApi.Apply(state.WithBaked(true).WithDepth(NavigationPreviewDepth.XRay));
+NavigationPreviewState state = NavigationPreviewApi.Current;
+NavigationPreviewApi.Apply(
+    state.WithBaked(true).WithDepth(NavigationPreviewDepth.XRay));
 ```
 
-`NavigationPreviewApi` reads and updates the existing Custom Navigation Overlay preferences. It
-does not create a second set of toggles. Reading `Current` writes nothing and raises no event;
-`Apply` raises the shared `Changed` event once when the complete state differs.
+`Current` side-effect free. `Apply` обновляет те же `EditorPrefs`, которые используют
+Scene View Overlay и Preferences; отдельного набора toggles нет. На событие
+`NavigationPreviewApi.Changed` нужно отписываться при unload/reload владельца.
 
-## Consumer fixture
+## Compatibility
 
-`Samples~/Demos/Editor/NavigationEditorApiExample.cs` is the minimal no-server caller. Focused
-coverage lives in `Tests/Editor/NavigationEditorApiTests.cs` and includes standalone/managed IDs,
-conflict rejection before writes, delivery summary fields, preview sharing, and dependency checks.
+`NavigationBakeCommand.Validate/Execute` сохранён как public compatibility facade для
+старых consumers. Для новых integrations предпочитайте `NavigationEditorApi`, потому
+что он поддерживает explicit identity ownership и verified delivery summary.
 
-## Revision receipt
+API впервые опубликован в 0.6.14 и входит в 0.6.16 без изменения signatures. Release
+0.6.16 не добавляет dependency на NPI и не меняет server wire contract.
 
-- Package/API version prepared for handoff: `0.6.14`.
-- Source baseline before CN-06: commit `02d8976` (`0.6.13`).
-- CN-06 is not a verified remote revision until these changes are committed and tagged. NPI-01
-  must record the resulting commit/tag, not assume that `main` or `latest` is the tested revision.
-- The optional package HTTP navigation server was not changed by CN-06. The EFT gameplay server
-  is outside this contract.
-
-Verification evidence belongs to the release commit/tag handoff. A successful C# assembly compile
-does not replace Unity Test Framework XML, standalone import, runtime, or server evidence.
+Полный справочник: [API reference](api-reference.md). Практический пример:
+[Recipes](recipes.md#6-проверить-и-запечь-карту-из-внешнего-editor-tool).

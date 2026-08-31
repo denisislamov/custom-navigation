@@ -1,6 +1,7 @@
-# Navigation Performance field audit
+# Navigation Performance: фактическая семантика полей
 
-Audit date: 2026-08-27. Source revision: CN-04 working tree after `e81e33e`.
+Контракт перепроверен для документации 0.6.16. Подробные defaults и presets также
+приведены в [Configuration](configuration.md#performance-profile).
 
 `NavigationPerformanceProfile` configures the local, owner-thread
 `NavigationQueryScheduler`. It does not affect Recast geometry, baked navmesh bytes, or the

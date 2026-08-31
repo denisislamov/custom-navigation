@@ -1,156 +1,109 @@
 # DataSakura Custom Navigation
 
-Physics-free navigation for Unity, built on top of [DotRecast](https://github.com/ikpil/DotRecast)
-(a C# port of Recast & Detour). The package provides everything needed to bake and
-query navigation meshes **without** using Unity Physics or the built-in NavMesh.
+DataSakura Custom Navigation `0.6.16` — physics-free навигация для Unity 6 на базе
+DotRecast. Пакет запекает navmesh в Editor, сохраняет один детерминированный бинарный
+артефакт для клиента и сервера и выполняет локальные запросы в пределах кадрового
+бюджета. Unity Physics и встроенный Unity NavMesh не используются.
 
-## What's inside
+[Открыть полное руководство](Documentation~/index.md)
 
-| Assembly | Platform | Responsibility |
+## Что входит в пакет
+
+| Assembly | Где работает | Назначение |
 | --- | --- | --- |
-| `CustomNavigation.Authoring` | Runtime | Level/agent/area authoring data (ScriptableObjects & components). |
-| `CustomNavigation.Runtime` | Runtime | Navmesh artifact loader, budgeted query scheduler, server path client. |
-| `CustomNavigation.NavigationEditor` | Editor | Offline baking, validation, inspectors and the Navigation editor window. |
+| `CustomNavigation.Authoring` | Editor и Player | `NavigationLevel`, профили, areas, links и другие authoring-данные. |
+| `CustomNavigation.Runtime` | Player | Загрузка артефакта, budgeted scheduler и HTTP-клиент. |
+| `CustomNavigation.NavigationEditor` | Только Editor | Validation, bake, Inspector, Scene View Overlay и окно `DS Navigation`. |
 
-The DotRecast managed DLLs ship under `Runtime/DotRecast`.
+Управление персонажем, AI behavior, сетевая репликация и runtime-перестроение navmesh
+не входят в пакет: игровой код получает точки пути и сам применяет их.
 
-## Architecture
+## Требования
 
-1. **Author** navigation using `NavigationLevel` and agent/area profiles.
-2. **Bake** (editor-only) a deterministic binary artifact via the Navigation window.
-3. **Query** the artifact at runtime through `NavigationQueryScheduler` (budgeted,
-   allocation-friendly) or delegate to the authoritative HTTP server
-   (`NavigationServerPathClient`).
+- Unity `6000.3` или новее;
+- для основного пакета дополнительные Unity packages не нужны: managed-сборки
+  DotRecast уже включены;
+- sample `Navigation Demos & Bots` требует `com.unity.inputsystem`;
+- опциональный reference server требует .NET 9 SDK.
 
-Client / gameplay code (bots, waypoint routes, demo scenes) lives **outside** the
-package assemblies so the package stays free of gameplay dependencies. A copy of that
-code ships as an importable sample (see below).
+## Установка
 
-## Installation
+Рекомендуемый воспроизводимый вариант — установить фиксированный Git tag через
+`Window > Package Management > Package Manager` → `+` →
+`Add package from git URL...`:
 
-Install via Unity Package Manager → **Add package from git URL…**:
-
-```
-https://github.com/denisislamov/custom-navigation.git
-```
-
-Or add it to `Packages/manifest.json` directly:
-
-```json
-"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git"
+```text
+https://github.com/denisislamov/custom-navigation.git#v0.6.16
 ```
 
-Pin a specific version with a tag:
+После импорта откройте единственную основную точку входа:
+`Tools > DataSakura > Custom Navigation Window`.
 
-```json
-"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git#v0.6.6"
+Git URL, `Packages/manifest.json`, local disk, embedded package, удаление и ограничения
+форматов описаны в [руководстве по установке](Documentation~/installation.md).
+
+## Quick Start
+
+Чтобы получить первый локальный путь без HTTP-сервера:
+
+1. Пройдите [Quick Start за 5–15 минут](Documentation~/quick-start.md).
+2. Откройте `Tools > DataSakura > Custom Navigation Window`.
+3. Используйте вкладки `Overview` → `Geometry` → `Bake`.
+4. Нажмите `Validate`, затем `Build for Client`.
+
+`Build for Client` создаёт в
+`Assets/DataSakura/CustomNavigation/Generated/Navigation` тройку:
+
+```text
+<levelId>.navigation.bytes
+<levelId>.navigation.manifest.json
+<levelId>.navigation.asset
 ```
 
 ## Sample: Navigation Demos & Bots
 
-Package Manager → DataSakura Custom Navigation → **Samples** → *Navigation Demos & Bots* → Import.
+Сначала установите `com.unity.inputsystem`, затем откройте пакет в Package Manager и
+на вкладке `Samples` нажмите `Import` у `Navigation Demos & Bots`. Unity скопирует
+sample в:
 
-It contains `NavigationBotAgent`, `NavigationWaypointRoute`, demo presentation helpers
-and editor menu items that **generate** the demo scenes (local / server / hybrid /
-multi-level), so no scene assets with fragile GUID references are shipped.
-
-> The sample assembly references `Unity.InputSystem`. Install
-> `com.unity.inputsystem` before importing, or remove that reference from
-> `CustomNavigation.Client.asmdef` after import.
-
-## Upgrading from 0.6.5 or earlier
-
-Run **Tools → Custom Navigation → Migrate pre-0.6.6 project folders** before rebuilding
-the demos. The explicit migration moves `Assets/CustomNavigation` to
-`Assets/DataSakura/CustomNavigation` and renames the builder-owned `Scene` folder to
-`Scenes` through `AssetDatabase.MoveAsset`, preserving Unity GUIDs. It is safe to run
-again. If both old and new roots (or both scene-folder spellings) exist, it reports the
-conflict and does not merge or overwrite them.
-
-Do not rename a previously imported sample version by hand. Import the current sample
-from Package Manager; Unity places it under
-`Assets/Samples/DataSakura Custom Navigation/<package-version>/Navigation Demos & Bots`.
-
-## Runtime configuration
-
-Consumer editor tools such as NPI should use the documented
-[`NavigationEditorApi` and `NavigationPreviewApi`](Documentation~/npi-editor-api.md)
-instead of copying package code or changing serialized package fields through reflection.
-
-Local scheduler presets and the field-by-field Active/Reserved audit are documented in
-[`Documentation~/navigation-performance.md`](Documentation~/navigation-performance.md).
-These values do not change baked geometry and are not dedicated-server presets.
-
-`NavigationServerSettings` is loaded via
-`Resources.Load("CustomNavigation/NavigationServerSettings")`. To point the runtime at
-your navigation server, create the asset in **your project** at
-`Assets/DataSakura/CustomNavigation/Resources/CustomNavigation/NavigationServerSettings.asset`
-(Create → Custom Navigation → Server Settings). Without it, built-in defaults are used.
-
-## The navigation server
-
-The package ships the reference .NET 9 navigation server in `Server~`. Unity ignores
-folders ending with `~`, which keeps the server sources out of the Unity compilation —
-but it also means they live in the read-only `Library/PackageCache`, so the server
-cannot be built or run in place. Install it into your project first:
-
-**Tools → Custom Navigation → Navigation Editor → Server tab → Install navigation server**
-(the Server tab is the only place that drives the local server).
-
-The server is copied to `<project>/NavigationServer`, next to `Assets`, so Unity never
-compiles it. Installing also points `NavigationServerSettings.serverArtifactFolder` at
-`NavigationServer/NavigationData`, so **Export for Server** writes where the server reads.
-
-Then:
-
-1. Build a level (**Build & Budgets** tab) and press **Upload to Server** — this pushes
-   the artifact over HTTP, so it also works when the server is not on this machine.
-   **Export to Folder** writes the same files into the server artifact folder instead,
-   which only helps a server that reads that very folder.
-2. **Start server** in the Server tab. The first launch restores packages and compiles,
-   so give it a few seconds.
-3. **Check /health** to confirm which artifact is loaded.
-
-New builds keep the existing generated root and use readable stable names:
-`<levelId>.navigation.bytes`, `<levelId>.navigation.manifest.json`, and
-`<levelId>.navigation.asset`. The full SHA-256 remains mandatory inside the manifest and can be
-copied from Build Details. Existing hash-based artifacts continue to load and export; run the
-explicit **Artifact Filename Migration** in Diagnostics to move them without changing GUIDs,
-payload bytes, or references.
-
-The order does not matter: the server starts fine with an empty `NavigationData` and
-reports `status: "no-artifact"` until you upload. New artifacts are picked up without a
-restart.
-
-Uploads are open on a server bound to `127.0.0.1`. Once it listens on a real network
-interface it refuses them unless started with `--upload-token <secret>` and the same
-secret is entered in the Server tab — the token is kept in EditorPrefs, never in a build.
-
-### Which map answers a request
-
-The server holds every level in its `NavigationData` folder and picks one per request:
-`POST /path` uses `levelId` from the body when present, otherwise the map that
-`active.manifest.json` points at - which *Export for Server* rewrites every time. With
-legacy multiple exports of one level, the newest wins. Current stable names keep one current
-export per level in a folder. If several retained builds are needed, use separate named build
-folders with the same filenames inside. `GET /health` lists `availableLevels`,
-and `GET /health?level=<levelId>` inspects a specific map.
-
-The server runs as a child process of the editor, logs into the Unity Console and is
-stopped when you quit Unity or press **Stop server**. Requires the
-[.NET 9 SDK](https://dotnet.microsoft.com/download) on `PATH`.
-
-Outside the editor, run it directly:
-
-```bash
-cd NavigationServer
-./run-server.sh --listen "http://*:5079/"
+```text
+Assets/Samples/DataSakura Custom Navigation/0.6.16/Navigation Demos & Bots
 ```
 
-Reinstalling from the package overwrites the sources but keeps `NavigationData`, so
-baked artifacts survive a package update.
+Sample содержит runtime-компоненты и Editor builders для local, server, hybrid и
+multi-level сценариев. Сами scene assets в package не поставляются: builders создают
+их в проекте и могут обновить Build Settings.
 
-## Third-party
+## Reference server
 
-DotRecast is distributed under the zlib license — see `Third Party Notices.md`.
-Package code is MIT — see `LICENSE.md`.
+Исходники .NET 9 сервера находятся в `Server~`. В окне `DS Navigation` выберите
+`NavigationLevel`, затем откройте `Settings` → `Local server` и нажмите
+`Install navigation server`. Сервер будет скопирован в `<project>/NavigationServer`.
+
+После `Build for Client` на вкладке `Bake`:
+
+- `Upload to Server` отправляет артефакт работающему серверу по HTTP;
+- `Export to Folder` записывает его в настроенную локальную папку.
+
+Подробности находятся в [Server README](Server~/README.md).
+
+## Документация
+
+- [Полное оглавление](Documentation~/index.md)
+- [Установка и удаление](Documentation~/installation.md)
+- [Quick Start](Documentation~/quick-start.md)
+- [Обновление, миграция и откат](Documentation~/migration-and-upgrading.md)
+- [Editor API для внешних интеграций](Documentation~/npi-editor-api.md)
+- [Поля производительности](Documentation~/navigation-performance.md)
+- [Имена и миграция артефактов](Documentation~/artifact-filenames.md)
+
+## Обновление
+
+Не меняйте versioned sample folders и generated artifacts вручную. Перед сменой tag
+сделайте backup, затем выполните применимые явные миграции на вкладке `Diagnostics`.
+Полная процедура: [Migration and upgrading](Documentation~/migration-and-upgrading.md).
+
+## Лицензии
+
+Код пакета распространяется по [MIT](LICENSE.md). DotRecast поставляется по лицензии
+zlib; см. [Third Party Notices](Third%20Party%20Notices.md).
