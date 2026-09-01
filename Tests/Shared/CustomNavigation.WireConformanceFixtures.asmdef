@@ -1,0 +1,22 @@
+{
+  "name": "CustomNavigation.WireConformanceFixtures",
+  "rootNamespace": "CustomNavigation.Tests.Shared",
+  "references": [
+    "CustomNavigation.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "Jitter2.Core.dll"
+  ],
+  "autoReferenced": false,
+  "defineConstraints": [
+    "UNITY_INCLUDE_TESTS"
+  ],
+  "versionDefines": [],
+  "noEngineReferences": true
+}

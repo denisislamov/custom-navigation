@@ -231,44 +231,28 @@ static async Task HandleRequest(
 
         if (request.HttpMethod == "POST" && path == "/path")
         {
-            PathRequest? pathRequest;
+            NavigationPathRequest pathRequest;
             try
             {
-                pathRequest = await JsonSerializer.DeserializeAsync<PathRequest>(
+                using var bodyReader = new StreamReader(
                     request.InputStream,
-                    jsonOptions);
+                    System.Text.Encoding.UTF8,
+                    true,
+                    4096,
+                    leaveOpen: true);
+                pathRequest = NavigationWireCodec.DecodeRequest(await bodyReader.ReadToEndAsync());
             }
-            catch (JsonException exception)
+            catch (NavigationWireFormatException exception)
             {
-                await WriteJson(
+                await WritePathJson(
                     response,
                     HttpStatusCode.BadRequest,
-                    new PathResponse(
-                        false,
-                        Array.Empty<Vector3Dto>(),
-                        "Invalid JSON: " + exception.Message,
-                        "invalid",
-                        string.Empty,
-                        string.Empty,
-                        false),
-                    jsonOptions);
-                return;
-            }
-
-            if (pathRequest?.Start is null || pathRequest.Destination is null)
-            {
-                await WriteJson(
-                    response,
-                    HttpStatusCode.BadRequest,
-                    new PathResponse(
-                        false,
-                        Array.Empty<Vector3Dto>(),
-                        "Both start and destination are required.",
-                        pathRequest?.RequestId ?? "invalid",
-                        string.Empty,
-                        string.Empty,
-                        false),
-                    jsonOptions);
+                    new NavigationPathResponse
+                    {
+                        Success = false,
+                        Message = exception.Code + ": " + exception.Message,
+                        RequestId = "invalid"
+                    });
                 return;
             }
 
@@ -289,18 +273,15 @@ static async Task HandleRequest(
                 // Deliberately 200 with success=false: the Unity client surfaces the
                 // message only for a successful HTTP exchange, and this message is the
                 // actionable part ("export from Unity first").
-                await WriteJson(
+                await WritePathJson(
                     response,
                     HttpStatusCode.OK,
-                    new PathResponse(
-                        false,
-                        Array.Empty<Vector3Dto>(),
-                        resolveError,
-                        requestId,
-                        string.Empty,
-                        string.Empty,
-                        false),
-                    jsonOptions);
+                    new NavigationPathResponse
+                    {
+                        Success = false,
+                        Message = resolveError,
+                        RequestId = requestId
+                    });
                 return;
             }
 
@@ -312,16 +293,16 @@ static async Task HandleRequest(
                 $"clientPath={pathRequest.ClientPathFingerprint ?? "none"}");
 
             var stopwatch = Stopwatch.StartNew();
-            PathResponse pathResponse = navigation.FindPath(pathRequest);
+            NavigationPathResponse pathResponse = navigation.FindPath(pathRequest);
             stopwatch.Stop();
 
             Console.WriteLine(
                 $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [path {requestId}] " +
-                $"output success={pathResponse.Success}, points={pathResponse.Points.Count}, " +
+                $"output success={pathResponse.Success}, points={pathResponse.Points.Length}, " +
                 $"elapsed={stopwatch.Elapsed.TotalMilliseconds.ToString("F2", CultureInfo.InvariantCulture)} ms, " +
                 $"artifact={pathResponse.ArtifactHash}, fingerprint={pathResponse.PathFingerprint}, " +
                 $"mismatch={pathResponse.ServerMismatchDetected}");
-            for (int i = 0; i < pathResponse.Points.Count; i++)
+            for (int i = 0; i < pathResponse.Points.Length; i++)
             {
                 Console.WriteLine(
                     $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [path {requestId}] " +
@@ -331,11 +312,10 @@ static async Task HandleRequest(
                 $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [path {requestId}] " +
                 $"message=\"{pathResponse.Message}\"");
 
-            await WriteJson(
+            await WritePathJson(
                 response,
                 HttpStatusCode.OK,
-                pathResponse,
-                jsonOptions);
+                pathResponse);
             return;
         }
 
@@ -365,7 +345,7 @@ static async Task HandleRequest(
     }
 }
 
-static string FormatPoint(Vector3Dto point)
+static string FormatPoint(Jitter2.LinearMath.JVector point)
 {
     return FormattableString.Invariant($"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
 }
@@ -407,6 +387,17 @@ static async Task WriteJson<T>(
     response.StatusCode = (int)statusCode;
     response.ContentType = "application/json; charset=utf-8";
     await JsonSerializer.SerializeAsync(response.OutputStream, value, jsonOptions);
+}
+
+static async Task WritePathJson(
+    HttpListenerResponse response,
+    HttpStatusCode statusCode,
+    NavigationPathResponse value)
+{
+    response.StatusCode = (int)statusCode;
+    response.ContentType = "application/json; charset=utf-8";
+    byte[] payload = System.Text.Encoding.UTF8.GetBytes(NavigationWireCodec.EncodeResponse(value));
+    await response.OutputStream.WriteAsync(payload);
 }
 
 internal static class ServerLog

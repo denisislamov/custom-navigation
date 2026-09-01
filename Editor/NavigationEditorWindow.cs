@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -1920,16 +1921,16 @@ namespace CustomNavigation.Editor
         private void RequestServerPath(NavigationArtifactAsset artifact, Vector3 start, Vector3 destination)
         {
             probeRequestPending = true;
-            var payload = new NavigationServerEditorClient.PathRequest
+            var payload = new NavigationPathRequest
             {
-                requestId = "editor-probe-" + DateTime.Now.Ticks,
-                start = NavigationServerEditorClient.ServerVector3.From(start),
-                destination = NavigationServerEditorClient.ServerVector3.From(destination),
-                clientArtifactHash = artifact != null ? artifact.ArtifactHash : string.Empty,
-                clientPathFingerprint = string.Empty
+                RequestId = "editor-probe-" + DateTime.Now.Ticks,
+                Start = NavigationUnityAdapter.ToJitter(start),
+                Destination = NavigationUnityAdapter.ToJitter(destination),
+                ClientArtifactHash = artifact != null ? artifact.ArtifactHash : string.Empty,
+                ClientPathFingerprint = string.Empty
             };
 
-            NavigationServerEditorClient.Post("/path", JsonUtility.ToJson(payload), (success, response) =>
+            NavigationServerEditorClient.Post("/path", NavigationWireCodec.EncodeRequest(payload), (success, response) =>
             {
                 if (this == null)
                 {
@@ -1944,42 +1945,44 @@ namespace CustomNavigation.Editor
                     return;
                 }
 
-                if (!NavigationServerEditorClient.TryParse(
-                        response,
-                        out NavigationServerEditorClient.PathResponse parsed)
-                    || parsed.points == null)
+                NavigationPathResponse parsed;
+                try
+                {
+                    parsed = NavigationWireCodec.DecodeResponse(response);
+                }
+                catch (NavigationWireFormatException)
                 {
                     NavigationSceneTools.SetServerPath(null, "Unrecognized server response: " + response);
                     Repaint();
                     return;
                 }
 
-                if (!parsed.success || parsed.points.Length == 0)
+                if (!parsed.Success || parsed.Points.Length == 0)
                 {
                     NavigationSceneTools.SetServerPath(
                         null,
-                        string.IsNullOrWhiteSpace(parsed.message)
+                        string.IsNullOrWhiteSpace(parsed.Message)
                             ? "The server found no route."
-                            : "Server: " + parsed.message);
+                            : "Server: " + parsed.Message);
                     Repaint();
                     return;
                 }
 
-                var points = new Vector3[parsed.points.Length];
+                var points = new Vector3[parsed.Points.Length];
                 for (int i = 0; i < points.Length; i++)
                 {
-                    points[i] = parsed.points[i].ToUnity();
+                    points[i] = NavigationUnityAdapter.ToUnity(parsed.Points[i]);
                 }
 
                 bool hashMatches = artifact == null
                                    || string.Equals(
-                                       parsed.artifactHash,
+                                       parsed.ArtifactHash,
                                        artifact.ArtifactHash,
                                        StringComparison.OrdinalIgnoreCase);
                 NavigationSceneTools.SetServerPath(
                     points,
                     $"The server returned {points.Length} points, artifact " +
-                    NavigationArtifactIndex.Short(parsed.artifactHash) +
+                    NavigationArtifactIndex.Short(parsed.ArtifactHash) +
                     (hashMatches ? " matches the client one." : " DIFFERS from the client one!"));
                 Repaint();
             });

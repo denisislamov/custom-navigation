@@ -5,7 +5,8 @@
     "CustomNavigation.NavigationEditor",
     "CustomNavigation.Authoring",
     "CustomNavigation.Runtime",
-    "CustomNavigation.UnityAdapter"
+    "CustomNavigation.UnityAdapter",
+    "CustomNavigation.WireConformanceFixtures"
   ],
   "includePlatforms": [
     "Editor"

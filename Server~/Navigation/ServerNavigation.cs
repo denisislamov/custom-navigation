@@ -1,8 +1,10 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using CustomNavigation.Runtime;
 using DotRecast.Core.Numerics;
 using DotRecast.Detour;
+using Jitter2.LinearMath;
 
 namespace DotRecastServer.Navigation;
 
@@ -34,12 +36,10 @@ public sealed class ServerNavigation
         PolygonCount = polygonCount;
     }
 
-    public PathResponse FindPath(PathRequest request)
+    public NavigationPathResponse FindPath(NavigationPathRequest request)
     {
-        Vector3Dto start = request.Start
-            ?? throw new ArgumentException("Path start is required.", nameof(request));
-        Vector3Dto destination = request.Destination
-            ?? throw new ArgumentException("Path destination is required.", nameof(request));
+        JVector start = request.Start;
+        JVector destination = request.Destination;
         string requestId = string.IsNullOrWhiteSpace(request.RequestId)
             ? "server-generated"
             : request.RequestId;
@@ -105,11 +105,11 @@ public sealed class ServerNavigation
                 return Failure(requestId, "DotRecast could not create a straight path.");
             }
 
-            var points = new Vector3Dto[pointCount];
+            var points = new JVector[pointCount];
             for (int i = 0; i < pointCount; i++)
             {
                 RcVec3f point = straightPath[i].pos;
-                points[i] = new Vector3Dto(point.X, point.Y, point.Z);
+                points[i] = new JVector(point.X, point.Y, point.Z);
             }
 
             string fingerprint = NavigationPathFingerprint.Compute(points);
@@ -144,40 +144,42 @@ public sealed class ServerNavigation
             string message = pathStatus.IsPartial()
                 ? "DotRecast returned a partial path."
                 : $"DotRecast returned {pointCount} straight path points.";
-            return new PathResponse(
-                true,
-                points,
-                message,
-                requestId,
-                ArtifactHash,
-                fingerprint,
-                artifactMismatch || pathMismatch);
+            return new NavigationPathResponse
+            {
+                Success = true,
+                Points = points,
+                Message = message,
+                RequestId = requestId,
+                ArtifactHash = ArtifactHash,
+                PathFingerprint = fingerprint,
+                ServerMismatchDetected = artifactMismatch || pathMismatch
+            };
         }
     }
 
-    private PathResponse Failure(string requestId, string message)
+    private NavigationPathResponse Failure(string requestId, string message)
     {
-        return new PathResponse(
-            false,
-            Array.Empty<Vector3Dto>(),
-            message,
-            requestId,
-            ArtifactHash,
-            string.Empty,
-            false);
+        return new NavigationPathResponse
+        {
+            Success = false,
+            Points = Array.Empty<JVector>(),
+            Message = message,
+            RequestId = requestId,
+            ArtifactHash = ArtifactHash
+        };
     }
 
-    private static bool IsFinite(Vector3Dto value)
+    private static bool IsFinite(JVector value)
     {
         return float.IsFinite(value.X) && float.IsFinite(value.Y) && float.IsFinite(value.Z);
     }
 
-    private static RcVec3f ToRc(Vector3Dto value)
+    private static RcVec3f ToRc(JVector value)
     {
         return new RcVec3f(value.X, value.Y, value.Z);
     }
 
-    private static string FormatPoint(Vector3Dto point)
+    private static string FormatPoint(JVector point)
     {
         return FormattableString.Invariant($"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
     }
@@ -185,12 +187,12 @@ public sealed class ServerNavigation
 
 public static class NavigationPathFingerprint
 {
-    public static string Compute(IReadOnlyList<Vector3Dto> points)
+    public static string Compute(IReadOnlyList<JVector> points)
     {
         var canonical = new StringBuilder(points.Count * 32);
         for (int i = 0; i < points.Count; i++)
         {
-            Vector3Dto point = points[i];
+            JVector point = points[i];
             canonical.Append(Quantize(point.X).ToString(CultureInfo.InvariantCulture));
             canonical.Append(',');
             canonical.Append(Quantize(point.Y).ToString(CultureInfo.InvariantCulture));

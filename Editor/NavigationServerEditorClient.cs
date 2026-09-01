@@ -108,47 +108,6 @@ namespace CustomNavigation.Editor
             AssemblyReloadEvents.beforeAssemblyReload += Abort;
         }
 
-        /// <summary>Body of <c>POST /path</c>. Matches NavigationServerPathClient and Contracts.cs.</summary>
-        [Serializable]
-        public sealed class PathRequest
-        {
-            public string requestId;
-            public ServerVector3 start;
-            public ServerVector3 destination;
-            public string clientArtifactHash;
-            public string clientPathFingerprint;
-        }
-
-        [Serializable]
-        public sealed class PathResponse
-        {
-            public bool success;
-            public ServerVector3[] points;
-            public string message;
-            public string requestId;
-            public string artifactHash;
-            public string pathFingerprint;
-            public bool serverMismatchDetected;
-        }
-
-        [Serializable]
-        public sealed class ServerVector3
-        {
-            public float x;
-            public float y;
-            public float z;
-
-            public static ServerVector3 From(Vector3 value)
-            {
-                return new ServerVector3 { x = value.x, y = value.y, z = value.z };
-            }
-
-            public Vector3 ToUnity()
-            {
-                return new Vector3(x, y, z);
-            }
-        }
-
         /// <summary>Response of <c>GET /artifacts</c>. The fields match DotRecastServer/Contracts.cs.</summary>
         [Serializable]
         public sealed class ArtifactsResponse

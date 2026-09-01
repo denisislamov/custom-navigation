@@ -1,35 +1,5 @@
 namespace DotRecastServer;
 
-public sealed record Vector3Dto(float X, float Y, float Z);
-
-public sealed class PathRequest
-{
-    public string? RequestId { get; init; }
-
-    /// <summary>
-    /// Which map to path on. Empty means "the active one", which keeps every
-    /// single-level project and every older client working unchanged.
-    /// </summary>
-    public string? LevelId { get; init; }
-
-    public Vector3Dto? Start { get; init; }
-
-    public Vector3Dto? Destination { get; init; }
-
-    public string? ClientArtifactHash { get; init; }
-
-    public string? ClientPathFingerprint { get; init; }
-}
-
-public sealed record PathResponse(
-    bool Success,
-    IReadOnlyList<Vector3Dto> Points,
-    string Message,
-    string RequestId,
-    string ArtifactHash,
-    string PathFingerprint,
-    bool ServerMismatchDetected);
-
 public sealed record HealthResponse(
     string Status,
     string DotRecastVersion,

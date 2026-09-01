@@ -13,6 +13,9 @@
   <ItemGroup>
     <Compile Remove="Tests/**/*.cs" />
     <Compile Include="../Runtime/CanonicalJitterContract.cs" Link="Shared/CanonicalJitterContract.cs" />
+    <Compile Include="../Runtime/NavigationJitterValidation.cs" Link="Shared/NavigationJitterValidation.cs" />
+    <Compile Include="../Runtime/NavigationWireProtocol.cs" Link="Shared/NavigationWireProtocol.cs" />
+    <Compile Include="../Runtime/NavigationWireCodec.cs" Link="Shared/NavigationWireCodec.cs" />
     <Reference Include="DotRecast.Core">
       <HintPath>lib/DotRecast.Core.dll</HintPath>
       <Private>true</Private>

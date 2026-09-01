@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using CustomNavigation.Runtime;
 using CustomNavigation.UnityAdapter;
 using Jitter2.LinearMath;
@@ -173,78 +172,48 @@ namespace CustomNavigation
 
             int version = ++requestVersion;
             waypointIndex = path.Count;
-            var payload = new ServerPathRequest
+            NavigationServerPathResult result = null;
+            yield return NavigationServerPathClient.RequestPath(
+                serverUrl,
+                $"server-scene-{version}-{Guid.NewGuid():N}",
+                expectedLevelId,
+                NavigationUnityAdapter.ToJitter(AgentGroundPosition()),
+                NavigationUnityAdapter.ToJitter(destination),
+                expectedArtifactHash,
+                string.Empty,
+                value => result = value);
+
+            if (version != requestVersion)
             {
-                requestId = $"server-scene-{version}-{Guid.NewGuid():N}",
-                start = ServerVector3.FromJitter(
-                    NavigationUnityAdapter.ToJitter(AgentGroundPosition())),
-                destination = ServerVector3.FromJitter(
-                    NavigationUnityAdapter.ToJitter(destination)),
-                clientArtifactHash = expectedArtifactHash
-            };
-            byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
-
-            using (var request = new UnityWebRequest(BuildUrl("/path"), UnityWebRequest.kHttpVerbPOST))
-            {
-                request.uploadHandler = new UploadHandlerRaw(body);
-                request.downloadHandler = new DownloadHandlerBuffer();
-                request.SetRequestHeader("Content-Type", "application/json");
-                request.timeout = 5;
-                status = "Waiting for authoritative route...";
-                yield return request.SendWebRequest();
-
-                if (version != requestVersion)
-                {
-                    yield break;
-                }
-
-                if (request.result != UnityWebRequest.Result.Success)
-                {
-                    ClearPath("Route request failed: " + request.error);
-                    yield break;
-                }
-
-                ServerPathResponse response;
-                try
-                {
-                    response = JsonUtility.FromJson<ServerPathResponse>(request.downloadHandler.text);
-                }
-                catch (Exception exception)
-                {
-                    ClearPath("Invalid /path response: " + exception.Message);
-                    yield break;
-                }
-
-                if (response == null || !response.success || response.points == null || response.points.Length == 0)
-                {
-                    ClearPath(response != null && !string.IsNullOrEmpty(response.message)
-                        ? response.message
-                        : "Server returned no route");
-                    yield break;
-                }
-
-                if (!string.Equals(response.artifactHash, expectedArtifactHash, StringComparison.Ordinal))
-                {
-                    string mismatch = $"[MISMATCH] /path artifact={ShortHash(response.artifactHash)}, " +
-                                      $"scene={ShortHash(expectedArtifactHash)}";
-                    Debug.LogWarning("[CustomNavigation] " + mismatch, this);
-                    ClearPath(mismatch);
-                    yield break;
-                }
-
-                ApplyServerPath(response.points, response.message);
+                yield break;
             }
+
+            if (result == null || !result.Success || result.Points.Length == 0)
+            {
+                ClearPath(result != null && !string.IsNullOrEmpty(result.Message)
+                    ? result.Message
+                    : "Server returned no route");
+                yield break;
+            }
+
+            if (!string.Equals(result.ArtifactHash, expectedArtifactHash, StringComparison.Ordinal))
+            {
+                string mismatch = $"[MISMATCH] /path artifact={ShortHash(result.ArtifactHash)}, " +
+                                  $"scene={ShortHash(expectedArtifactHash)}";
+                Debug.LogWarning("[CustomNavigation] " + mismatch, this);
+                ClearPath(mismatch);
+                yield break;
+            }
+
+            ApplyServerPath(result.Points, result.Message);
         }
 
-        private void ApplyServerPath(ServerVector3[] points, string message)
+        private void ApplyServerPath(JVector[] points, string message)
         {
             path.Clear();
             for (int i = 0; i < points.Length; i++)
             {
-                if (points[i] != null)
-                {
-                    path.Add(points[i].ToJitter());
-                }
+                path.Add(points[i]);
             }
 
             if (path.Count == 0)
@@ -466,27 +435,6 @@ namespace CustomNavigation
         }
 
         [Serializable]
-        private sealed class ServerVector3
-        {
-            public float x;
-            public float y;
-            public float z;
-
-            public JVector ToJitter()
-            {
-                return NavigationJitterValidation.RequireFinite(
-                    new JVector(x, y, z),
-                    "serverResponsePoint");
-            }
-
-            public static ServerVector3 FromJitter(JVector value)
-            {
-                NavigationJitterValidation.RequireFinite(value, nameof(value));
-                return new ServerVector3 { x = value.X, y = value.Y, z = value.Z };
-            }
-        }
-
-        [Serializable]
         private sealed class ServerHealthResponse
         {
             public string status;
@@ -494,22 +442,5 @@ namespace CustomNavigation
             public string artifactHash;
         }
 
-        [Serializable]
-        private sealed class ServerPathRequest
-        {
-            public string requestId;
-            public ServerVector3 start;
-            public ServerVector3 destination;
-            public string clientArtifactHash;
-        }
-
-        [Serializable]
-        private sealed class ServerPathResponse
-        {
-            public bool success;
-            public ServerVector3[] points;
-            public string message;
-            public string artifactHash;
-        }
     }
 }

@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Text;
 using Jitter2.LinearMath;
-using UnityEngine;
 using UnityEngine.Networking;
 
 namespace CustomNavigation.Runtime
@@ -77,16 +76,16 @@ namespace CustomNavigation.Runtime
             Action<NavigationServerPathResult> completion)
         {
             var result = new NavigationServerPathResult();
-            var payload = new ServerPathRequest
+            var payload = new NavigationPathRequest
             {
-                requestId = requestId,
-                levelId = levelId ?? string.Empty,
-                start = ServerVector3.FromJitter(start),
-                destination = ServerVector3.FromJitter(destination),
-                clientArtifactHash = clientArtifactHash ?? string.Empty,
-                clientPathFingerprint = clientPathFingerprint ?? string.Empty
+                RequestId = requestId ?? string.Empty,
+                LevelId = levelId ?? string.Empty,
+                Start = start,
+                Destination = destination,
+                ClientArtifactHash = clientArtifactHash ?? string.Empty,
+                ClientPathFingerprint = clientPathFingerprint ?? string.Empty
             };
-            byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
+            byte[] body = Encoding.UTF8.GetBytes(NavigationWireCodec.EncodeRequest(payload));
 
             using var request = new UnityWebRequest(
                 BuildUrl(baseUrl, "/path"),
@@ -104,10 +103,10 @@ namespace CustomNavigation.Runtime
                 yield break;
             }
 
-            ServerPathResponse response;
+            NavigationPathResponse response;
             try
             {
-                response = JsonUtility.FromJson<ServerPathResponse>(request.downloadHandler.text);
+                response = NavigationWireCodec.DecodeResponse(request.downloadHandler.text);
             }
             catch (Exception exception)
             {
@@ -116,30 +115,26 @@ namespace CustomNavigation.Runtime
                 yield break;
             }
 
-            if (response == null || !response.success || response.points == null || response.points.Length == 0)
+            if (!response.Success || response.Points == null || response.Points.Length == 0)
             {
-                result.Message = string.IsNullOrWhiteSpace(response?.message)
+                result.Message = string.IsNullOrWhiteSpace(response.Message)
                     ? "Navigation server returned no route."
-                    : response.message;
-                result.ArtifactHash = response?.artifactHash ?? string.Empty;
+                    : response.Message;
+                result.ArtifactHash = response.ArtifactHash ?? string.Empty;
                 completion?.Invoke(result);
                 yield break;
             }
 
-            var points = new JVector[response.points.Length];
-            for (int i = 0; i < response.points.Length; i++)
-            {
-                points[i] = response.points[i].ToJitter();
-            }
+            JVector[] points = response.Points;
 
             result.Success = true;
             result.Points = points;
-            result.Message = response.message ?? string.Empty;
-            result.ArtifactHash = response.artifactHash ?? string.Empty;
+            result.Message = response.Message ?? string.Empty;
+            result.ArtifactHash = response.ArtifactHash ?? string.Empty;
             result.PathFingerprint = NavigationPathFingerprint.Compute(points);
-            result.ServerMismatchDetected = response.serverMismatchDetected
+            result.ServerMismatchDetected = response.ServerMismatchDetected
                                             || !string.Equals(
-                                                response.pathFingerprint,
+                                                response.PathFingerprint,
                                                 result.PathFingerprint,
                                                 StringComparison.OrdinalIgnoreCase);
             completion?.Invoke(result);
@@ -153,48 +148,5 @@ namespace CustomNavigation.Runtime
             return root.TrimEnd('/') + path;
         }
 
-        [Serializable]
-        private sealed class ServerPathRequest
-        {
-            public string requestId;
-            public string levelId;
-            public ServerVector3 start;
-            public ServerVector3 destination;
-            public string clientArtifactHash;
-            public string clientPathFingerprint;
-        }
-
-        [Serializable]
-        private sealed class ServerPathResponse
-        {
-            public bool success;
-            public ServerVector3[] points;
-            public string message;
-            public string requestId;
-            public string artifactHash;
-            public string pathFingerprint;
-            public bool serverMismatchDetected;
-        }
-
-        [Serializable]
-        private sealed class ServerVector3
-        {
-            public float x;
-            public float y;
-            public float z;
-
-            public static ServerVector3 FromJitter(JVector value)
-            {
-                NavigationJitterValidation.RequireFinite(value, nameof(value));
-                return new ServerVector3 { x = value.X, y = value.Y, z = value.Z };
-            }
-
-            public JVector ToJitter()
-            {
-                return NavigationJitterValidation.RequireFinite(
-                    new JVector(x, y, z),
-                    "serverResponsePoint");
-            }
-        }
     }
 }

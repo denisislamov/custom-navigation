@@ -1,13 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 using CustomNavigation.Authoring;
 using CustomNavigation.UnityAdapter;
 using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Networking;
 
 namespace CustomNavigation.Runtime
 {
@@ -234,92 +232,61 @@ namespace CustomNavigation.Runtime
             string localFingerprint,
             bool localSucceeded)
         {
-            var payload = new HybridPathRequest
-            {
-                requestId = requestId,
-                start = HybridVector3.FromJitter(requestStart),
-                destination = HybridVector3.FromJitter(destination),
-                clientArtifactHash = localNavigation.Scheduler.Artifact.ArtifactHash,
-                clientPathFingerprint = localFingerprint
-            };
-            byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
-
-            using var request = new UnityWebRequest(
-                BuildUrl("/path"),
-                UnityWebRequest.kHttpVerbPOST);
-            request.uploadHandler = new UploadHandlerRaw(body);
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.timeout = NavigationServerRuntimeSettings.RequestTimeoutSeconds;
-            yield return request.SendWebRequest();
+            NavigationServerPathResult serverResult = null;
+            yield return NavigationServerPathClient.RequestPath(
+                serverBaseUrl,
+                requestId,
+                requestStart,
+                destination,
+                localNavigation.Scheduler.Artifact.ArtifactHash,
+                localFingerprint,
+                value => serverResult = value);
 
             if (version != requestVersion)
             {
                 yield break;
             }
 
-            if (request.result != UnityWebRequest.Result.Success)
+            if (serverResult == null || !serverResult.Success)
             {
-                status = $"[{requestId}] server unavailable; local route remains active: {request.error}";
+                string error = serverResult?.Message ?? "No server response.";
+                status = $"[{requestId}] server unavailable; local route remains active: {error}";
                 Debug.LogWarning(
                     $"[CustomNavigation] [{requestId}] Authoritative navigation unavailable; " +
-                    $"continuing local prediction. Error: {request.error}",
+                    $"continuing local prediction. Error: {error}",
                     this);
                 yield break;
             }
 
-            HybridPathResponse response;
-            try
-            {
-                response = JsonUtility.FromJson<HybridPathResponse>(request.downloadHandler.text);
-            }
-            catch (Exception exception)
-            {
-                status = $"[{requestId}] invalid server response; local route remains active.";
-                Debug.LogException(exception, this);
-                yield break;
-            }
-
-            if (response == null || !response.success || response.points == null || response.points.Length == 0)
-            {
-                status = $"[{requestId}] server returned no route; local route remains active.";
-                yield break;
-            }
-
-            var serverPoints = new JVector[response.points.Length];
-            for (int i = 0; i < response.points.Length; i++)
-            {
-                serverPoints[i] = response.points[i].ToJitter();
-            }
-
-            string calculatedServerFingerprint = NavigationPathFingerprint.Compute(serverPoints);
+            JVector[] serverPoints = serverResult.Points;
+            string calculatedServerFingerprint = serverResult.PathFingerprint;
             lastServerFingerprint = calculatedServerFingerprint;
             string localArtifact = localNavigation.Scheduler.Artifact.ArtifactHash;
             bool artifactMismatch = !string.Equals(
                 localArtifact,
-                response.artifactHash,
+                serverResult.ArtifactHash,
                 StringComparison.OrdinalIgnoreCase);
             bool pathMismatch = !string.Equals(
                 localFingerprint,
                 calculatedServerFingerprint,
                 StringComparison.OrdinalIgnoreCase);
             bool responseFingerprintMismatch = !string.Equals(
-                response.pathFingerprint,
+                serverResult.PathFingerprint,
                 calculatedServerFingerprint,
                 StringComparison.OrdinalIgnoreCase);
             bool mismatch = !localSucceeded
                             || artifactMismatch
                             || pathMismatch
                             || responseFingerprintMismatch
-                            || response.serverMismatchDetected;
+                            || serverResult.ServerMismatchDetected;
 
             if (mismatch)
             {
                 Debug.LogWarning(
                     $"[CustomNavigation] [MISMATCH] [{requestId}] Applying authoritative correction. " +
-                    $"localArtifact={localArtifact}, serverArtifact={response.artifactHash}, " +
+                    $"localArtifact={localArtifact}, serverArtifact={serverResult.ArtifactHash}, " +
                     $"localPath={localFingerprint}, serverPath={calculatedServerFingerprint}, " +
-                    $"serverReported={response.serverMismatchDetected}.",
+                    $"serverReported={serverResult.ServerMismatchDetected}.",
                     this);
                 ApplyPath(serverPoints, serverPathMaterial);
                 status = $"[{requestId}] WARNING: mismatch detected; server route applied.";
@@ -378,11 +345,6 @@ namespace CustomNavigation.Runtime
             Vector3 value = player.position;
             value.y = 0f;
             return value;
-        }
-
-        private string BuildUrl(string path)
-        {
-            return serverBaseUrl.TrimEnd('/') + path;
         }
 
         private Camera CreateCamera()
@@ -495,47 +457,5 @@ namespace CustomNavigation.Runtime
             };
         }
 
-        [Serializable]
-        private sealed class HybridPathRequest
-        {
-            public string requestId;
-            public HybridVector3 start;
-            public HybridVector3 destination;
-            public string clientArtifactHash;
-            public string clientPathFingerprint;
-        }
-
-        [Serializable]
-        private sealed class HybridPathResponse
-        {
-            public bool success;
-            public HybridVector3[] points;
-            public string message;
-            public string requestId;
-            public string artifactHash;
-            public string pathFingerprint;
-            public bool serverMismatchDetected;
-        }
-
-        [Serializable]
-        private sealed class HybridVector3
-        {
-            public float x;
-            public float y;
-            public float z;
-
-            public static HybridVector3 FromJitter(JVector value)
-            {
-                NavigationJitterValidation.RequireFinite(value, nameof(value));
-                return new HybridVector3 { x = value.X, y = value.Y, z = value.Z };
-            }
-
-            public JVector ToJitter()
-            {
-                return NavigationJitterValidation.RequireFinite(
-                    new JVector(x, y, z),
-                    "serverResponsePoint");
-            }
-        }
     }
 }
