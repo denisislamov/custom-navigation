@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using CustomNavigation.Authoring;
+using CustomNavigation.Runtime;
 using UnityEditor;
 using UnityEngine;
 
@@ -123,7 +124,8 @@ namespace CustomNavigation.Editor
                     row.ServerLoaded = chosen.isLoaded;
                 }
 
-                if (exact != null && exact.dataPresent && exact.hashMatchesData)
+                if (exact != null && exact.dataPresent && exact.hashMatchesData
+                    && string.IsNullOrEmpty(exact.error))
                 {
                     row.State = NavigationArtifactSyncState.InSync;
                     if (!serverReachable)
@@ -249,6 +251,7 @@ namespace CustomNavigation.Editor
                                        ComputeSha256(Path.Combine(folder, manifest.fileName)),
                                        manifest.artifactHash,
                                        StringComparison.OrdinalIgnoreCase);
+                string compatibilityError = GetCompatibilityError(manifest);
                 artifacts.Add(new NavigationServerEditorClient.ServerArtifact
                 {
                     levelId = manifest.levelId,
@@ -256,6 +259,11 @@ namespace CustomNavigation.Editor
                     artifactHash = manifest.artifactHash,
                     schemaVersion = manifest.schemaVersion,
                     dotRecastVersion = manifest.dotRecastVersion,
+                    precision = manifest.precision,
+                    canonicalJitterAssemblySha256 = manifest.canonicalJitterAssemblySha256,
+                    deterministicMathCompatibilityId = manifest.deterministicMathCompatibilityId,
+                    fingerprintAlgorithmVersion = manifest.fingerprintAlgorithmVersion,
+                    fingerprintAlgorithmId = manifest.fingerprintAlgorithmId,
                     agentProfileId = manifest.agentProfileId,
                     polygonCount = manifest.polygonCount,
                     sourceMeshCount = manifest.sourceMeshCount,
@@ -268,9 +276,11 @@ namespace CustomNavigation.Editor
                         StringComparison.OrdinalIgnoreCase),
                     // The server was not queried, so what it actually loaded is unknown here.
                     isLoaded = false,
-                    error = dataPresent
-                        ? (hashMatches ? string.Empty : "The file SHA-256 does not match the manifest.")
-                        : "There is no navigation payload next to the manifest."
+                    error = !string.IsNullOrEmpty(compatibilityError)
+                        ? compatibilityError
+                        : dataPresent
+                            ? (hashMatches ? string.Empty : "The file SHA-256 does not match the manifest.")
+                            : "There is no navigation payload next to the manifest."
                 });
             }
 
@@ -330,6 +340,27 @@ namespace CustomNavigation.Editor
             catch (Exception)
             {
                 return null;
+            }
+        }
+
+        private static string GetCompatibilityError(
+            NavigationArtifactBuilder.NavigationArtifactManifest manifest)
+        {
+            try
+            {
+                NavigationCompatibilityContract.ValidateArtifact(
+                    manifest.schemaVersion,
+                    manifest.dotRecastVersion,
+                    manifest.precision,
+                    manifest.canonicalJitterAssemblySha256,
+                    manifest.deterministicMathCompatibilityId,
+                    manifest.fingerprintAlgorithmVersion,
+                    manifest.fingerprintAlgorithmId);
+                return string.Empty;
+            }
+            catch (NavigationCompatibilityException exception)
+            {
+                return exception.Message;
             }
         }
     }

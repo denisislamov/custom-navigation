@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using CustomNavigation.Authoring;
+using CustomNavigation.Runtime;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -72,7 +73,13 @@ namespace CustomNavigation.Editor.Tests
             {
                 EnsureFolder(folder);
                 artifact = ScriptableObject.CreateInstance<NavigationArtifactAsset>();
-                artifact.Configure(levelId, "hash", "1", "test", "agent", 1, 1, null, "{}");
+                artifact.Configure(levelId, "hash", "1", "test",
+                    NavigationCompatibilityContract.Precision,
+                    NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                    NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                    NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                    NavigationCompatibilityContract.FingerprintAlgorithmId,
+                    "agent", 1, 1, null, "{}");
                 AssetDatabase.CreateAsset(artifact, assetPath);
 
                 Assert.That(NavigationArtifactBuilder.LoadClientArtifact(levelId), Is.SameAs(artifact));
@@ -103,6 +110,11 @@ namespace CustomNavigation.Editor.Tests
             {
                 schemaVersion = NavigationArtifactBuilder.SchemaVersion,
                 dotRecastVersion = NavigationArtifactBuilder.DotRecastVersion,
+                precision = NavigationCompatibilityContract.Precision,
+                canonicalJitterAssemblySha256 = NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                deterministicMathCompatibilityId = NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                fingerprintAlgorithmVersion = NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                fingerprintAlgorithmId = NavigationCompatibilityContract.FingerprintAlgorithmId,
                 levelId = levelId,
                 artifactHash = hash,
                 agentProfileId = "agent",
@@ -117,7 +129,13 @@ namespace CustomNavigation.Editor.Tests
             TextAsset payload = AssetDatabase.LoadAssetAtPath<TextAsset>(payloadPath);
             var artifact = ScriptableObject.CreateInstance<NavigationArtifactAsset>();
             artifact.Configure(levelId, hash, NavigationArtifactBuilder.SchemaVersion,
-                NavigationArtifactBuilder.DotRecastVersion, "agent", 3, 1, payload, manifestJson);
+                NavigationArtifactBuilder.DotRecastVersion,
+                NavigationCompatibilityContract.Precision,
+                NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                NavigationCompatibilityContract.FingerprintAlgorithmId,
+                "agent", 3, 1, payload, manifestJson);
             AssetDatabase.CreateAsset(artifact, assetPath);
 
             string payloadGuid = AssetDatabase.AssetPathToGUID(payloadPath);
@@ -174,7 +192,13 @@ namespace CustomNavigation.Editor.Tests
             AssetDatabase.ImportAsset(manifestPath, ImportAssetOptions.ForceSynchronousImport);
             var artifact = ScriptableObject.CreateInstance<NavigationArtifactAsset>();
             artifact.Configure(levelId, new string('0', 64), "1",
-                NavigationArtifactBuilder.DotRecastVersion, "agent", 1, 1,
+                NavigationArtifactBuilder.DotRecastVersion,
+                NavigationCompatibilityContract.Precision,
+                NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                NavigationCompatibilityContract.FingerprintAlgorithmId,
+                "agent", 1, 1,
                 AssetDatabase.LoadAssetAtPath<TextAsset>(payloadPath), manifestJson);
             AssetDatabase.CreateAsset(artifact, assetPath);
 
@@ -256,6 +280,11 @@ namespace CustomNavigation.Editor.Tests
                     new string('f', 64),
                     NavigationArtifactBuilder.SchemaVersion,
                     NavigationArtifactBuilder.DotRecastVersion,
+                    NavigationCompatibilityContract.Precision,
+                    NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                    NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                    NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                    NavigationCompatibilityContract.FingerprintAlgorithmId,
                     "agent",
                     1,
                     1,

@@ -2,14 +2,15 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CustomNavigation.Runtime;
 using DotRecast.Detour;
 using DotRecast.Detour.Io;
 
 namespace DotRecastServer.Navigation;
 public static class NavigationArtifactStore
 {
-    public const string SupportedSchemaVersion = "1";
-    public const string SupportedDotRecastVersion = "2026.1.3";
+    public const string SupportedSchemaVersion = NavigationCompatibilityContract.ArtifactSchemaVersion;
+    public const string SupportedDotRecastVersion = NavigationCompatibilityContract.DotRecastVersion;
     public const string ActiveManifestFileName = "active.manifest.json";
     public const string NavigationDataSuffix = ".navigation.bytes";
     public const string NavigationManifestSuffix = ".navigation.manifest.json";
@@ -46,19 +47,14 @@ public static class NavigationArtifactStore
         byte[] data,
         string sourceLabel)
     {
-        if (!string.Equals(manifest.SchemaVersion, SupportedSchemaVersion, StringComparison.Ordinal))
-        {
-            throw new InvalidDataException(
-                $"Unsupported navigation schema '{manifest.SchemaVersion}'. " +
-                $"Server supports '{SupportedSchemaVersion}'.");
-        }
-
-        if (!string.Equals(manifest.DotRecastVersion, SupportedDotRecastVersion, StringComparison.Ordinal))
-        {
-            throw new InvalidDataException(
-                $"Navigation artifact uses DotRecast '{manifest.DotRecastVersion}', " +
-                $"server uses '{SupportedDotRecastVersion}'.");
-        }
+        NavigationCompatibilityContract.ValidateArtifact(
+            manifest.SchemaVersion,
+            manifest.DotRecastVersion,
+            manifest.Precision,
+            manifest.CanonicalJitterAssemblySha256,
+            manifest.DeterministicMathCompatibilityId,
+            manifest.FingerprintAlgorithmVersion,
+            manifest.FingerprintAlgorithmId);
 
         string actualHash = ComputeSha256(data);
         if (!string.Equals(actualHash, manifest.ArtifactHash, StringComparison.OrdinalIgnoreCase))
@@ -433,6 +429,22 @@ public static class NavigationArtifactStore
                                    ComputeSha256(File.ReadAllBytes(dataPath)),
                                    manifest.ArtifactHash,
                                    StringComparison.OrdinalIgnoreCase);
+            string compatibilityError = string.Empty;
+            try
+            {
+                NavigationCompatibilityContract.ValidateArtifact(
+                    manifest.SchemaVersion,
+                    manifest.DotRecastVersion,
+                    manifest.Precision,
+                    manifest.CanonicalJitterAssemblySha256,
+                    manifest.DeterministicMathCompatibilityId,
+                    manifest.FingerprintAlgorithmVersion,
+                    manifest.FingerprintAlgorithmId);
+            }
+            catch (NavigationCompatibilityException exception)
+            {
+                compatibilityError = exception.Message;
+            }
 
             return new ServerArtifactDto(
                 manifest.LevelId,
@@ -440,6 +452,11 @@ public static class NavigationArtifactStore
                 manifest.ArtifactHash,
                 manifest.SchemaVersion,
                 manifest.DotRecastVersion,
+                manifest.Precision,
+                manifest.CanonicalJitterAssemblySha256,
+                manifest.DeterministicMathCompatibilityId,
+                manifest.FingerprintAlgorithmVersion,
+                manifest.FingerprintAlgorithmId,
                 manifest.AgentProfileId,
                 manifest.PolygonCount,
                 manifest.SourceMeshCount,
@@ -448,7 +465,7 @@ public static class NavigationArtifactStore
                 hashMatches,
                 string.Equals(manifest.ArtifactHash, activeHash, StringComparison.OrdinalIgnoreCase),
                 string.Equals(manifest.ArtifactHash, loadedHash, StringComparison.OrdinalIgnoreCase),
-                string.Empty);
+                compatibilityError);
         }
         catch (Exception exception)
         {
@@ -463,6 +480,11 @@ public static class NavigationArtifactStore
             string.Empty,
             string.Empty,
             string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            string.Empty,
+            0,
             string.Empty,
             string.Empty,
             0,
@@ -527,6 +549,11 @@ public sealed class NavigationArtifactManifest
 {
     public string SchemaVersion { get; init; } = string.Empty;
     public string DotRecastVersion { get; init; } = string.Empty;
+    public string Precision { get; init; } = string.Empty;
+    public string CanonicalJitterAssemblySha256 { get; init; } = string.Empty;
+    public string DeterministicMathCompatibilityId { get; init; } = string.Empty;
+    public int FingerprintAlgorithmVersion { get; init; }
+    public string FingerprintAlgorithmId { get; init; } = string.Empty;
     public string LevelId { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public string ArtifactHash { get; init; } = string.Empty;

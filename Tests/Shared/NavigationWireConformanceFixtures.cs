@@ -10,14 +10,22 @@ namespace CustomNavigation.Tests.Shared
         public static readonly string CanonicalRequest =
             "{\"protocolVersion\":2,\"runtimeCompatibilityId\":\"" +
             NavigationWireProtocol.RuntimeCompatibilityId +
-            "\",\"requestId\":\"req-1\",\"levelId\":\"arena\",\"start\":{\"x\":1.25,\"y\":0,\"z\":-2.5}," +
+            "\",\"precision\":\"" + NavigationCompatibilityContract.Precision +
+            "\",\"canonicalJitterAssemblySha256\":\"" + NavigationCompatibilityContract.CanonicalJitterAssemblySha256 +
+            "\",\"deterministicMathCompatibilityId\":\"" + NavigationCompatibilityContract.DeterministicMathCompatibilityId +
+            "\",\"fingerprintAlgorithmVersion\":" + NavigationCompatibilityContract.FingerprintAlgorithmVersion +
+            ",\"requestId\":\"req-1\",\"levelId\":\"arena\",\"start\":{\"x\":1.25,\"y\":0,\"z\":-2.5}," +
             "\"destination\":{\"x\":3,\"y\":4.5,\"z\":0},\"clientArtifactHash\":\"abc\"," +
             "\"clientPathFingerprint\":\"def\"}";
 
         public static readonly string CanonicalResponse =
             "{\"protocolVersion\":2,\"runtimeCompatibilityId\":\"" +
             NavigationWireProtocol.RuntimeCompatibilityId +
-            "\",\"success\":true,\"points\":[{\"x\":1.25,\"y\":0,\"z\":-2.5},{\"x\":3,\"y\":4.5,\"z\":0}]," +
+            "\",\"precision\":\"" + NavigationCompatibilityContract.Precision +
+            "\",\"canonicalJitterAssemblySha256\":\"" + NavigationCompatibilityContract.CanonicalJitterAssemblySha256 +
+            "\",\"deterministicMathCompatibilityId\":\"" + NavigationCompatibilityContract.DeterministicMathCompatibilityId +
+            "\",\"fingerprintAlgorithmVersion\":" + NavigationCompatibilityContract.FingerprintAlgorithmVersion +
+            ",\"success\":true,\"points\":[{\"x\":1.25,\"y\":0,\"z\":-2.5},{\"x\":3,\"y\":4.5,\"z\":0}]," +
             "\"message\":\"ok\",\"requestId\":\"req-1\",\"artifactHash\":\"abc\"," +
             "\"pathFingerprint\":\"def\",\"serverMismatchDetected\":false}";
 
@@ -72,7 +80,11 @@ namespace CustomNavigation.Tests.Shared
         {
             string id = NavigationWireProtocol.RuntimeCompatibilityId;
             string prefix = "{\"protocolVersion\":2,\"runtimeCompatibilityId\":\"" + id +
-                            "\",\"requestId\":\"r\",\"levelId\":\"\",\"start\":";
+                            "\",\"precision\":\"" + NavigationCompatibilityContract.Precision +
+                            "\",\"canonicalJitterAssemblySha256\":\"" + NavigationCompatibilityContract.CanonicalJitterAssemblySha256 +
+                            "\",\"deterministicMathCompatibilityId\":\"" + NavigationCompatibilityContract.DeterministicMathCompatibilityId +
+                            "\",\"fingerprintAlgorithmVersion\":" + NavigationCompatibilityContract.FingerprintAlgorithmVersion +
+                            ",\"requestId\":\"r\",\"levelId\":\"\",\"start\":";
             string suffix = ",\"destination\":{\"x\":1,\"y\":2,\"z\":3}," +
                             "\"clientArtifactHash\":\"\",\"clientPathFingerprint\":\"\"}";
             return new[]
@@ -92,7 +104,11 @@ namespace CustomNavigation.Tests.Shared
                     "\"clientPathFingerprint\":\"\"}",
                     NavigationWireErrorCode.MissingProperty),
                 new InvalidFixture("wrong-version", CanonicalRequest.Replace("\"protocolVersion\":2", "\"protocolVersion\":1"), NavigationWireErrorCode.ProtocolMismatch),
-                new InvalidFixture("wrong-identity", CanonicalRequest.Replace(id, "wrong"), NavigationWireErrorCode.RuntimeCompatibilityMismatch)
+                new InvalidFixture("wrong-identity", CanonicalRequest.Replace(id, "wrong"), NavigationWireErrorCode.RuntimeCompatibilityMismatch),
+                new InvalidFixture("wrong-precision", CanonicalRequest.Replace("\"precision\":\"f32\"", "\"precision\":\"f64\""), NavigationWireErrorCode.PrecisionMismatch),
+                new InvalidFixture("wrong-jitter", CanonicalRequest.Replace(NavigationCompatibilityContract.CanonicalJitterAssemblySha256, "wrong"), NavigationWireErrorCode.CanonicalJitterMismatch),
+                new InvalidFixture("wrong-math", CanonicalRequest.Replace(NavigationCompatibilityContract.DeterministicMathCompatibilityId, "wrong"), NavigationWireErrorCode.DeterministicMathMismatch),
+                new InvalidFixture("wrong-fingerprint-version", CanonicalRequest.Replace("\"fingerprintAlgorithmVersion\":2", "\"fingerprintAlgorithmVersion\":1"), NavigationWireErrorCode.FingerprintAlgorithmMismatch)
             };
         }
 

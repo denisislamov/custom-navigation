@@ -46,6 +46,15 @@ public sealed class ServerNavigation
             return Failure(requestId, "Coordinates must be finite numbers.");
         }
 
+        try
+        {
+            NavigationCompatibilityContract.ValidateArtifactHash(request.ClientArtifactHash, ArtifactHash);
+        }
+        catch (NavigationCompatibilityException exception)
+        {
+            return Failure(requestId, exception.Message, true);
+        }
+
         lock (_queryLock)
         {
             var searchExtents = new RcVec3f(2f, 4f, 2f);
@@ -110,24 +119,11 @@ public sealed class ServerNavigation
             }
 
             string fingerprint = NavigationPathFingerprint.Compute(points);
-            bool artifactMismatch = !string.IsNullOrWhiteSpace(request.ClientArtifactHash)
-                                    && !string.Equals(
-                                        request.ClientArtifactHash,
-                                        ArtifactHash,
-                                        StringComparison.OrdinalIgnoreCase);
             bool pathMismatch = !string.IsNullOrWhiteSpace(request.ClientPathFingerprint)
                                 && !string.Equals(
                                     request.ClientPathFingerprint,
                                     fingerprint,
                                     StringComparison.OrdinalIgnoreCase);
-
-            if (artifactMismatch)
-            {
-                Console.Error.WriteLine(
-                    $"[{DateTimeOffset.Now:HH:mm:ss.fff}] [WARNING] [path {requestId}] " +
-                    $"navigation artifact mismatch: client={request.ClientArtifactHash}, " +
-                    $"server={ArtifactHash}, level={LevelId}");
-            }
 
             if (pathMismatch)
             {
@@ -149,12 +145,12 @@ public sealed class ServerNavigation
                 RequestId = requestId,
                 ArtifactHash = ArtifactHash,
                 PathFingerprint = fingerprint,
-                ServerMismatchDetected = artifactMismatch || pathMismatch
+                ServerMismatchDetected = pathMismatch
             };
         }
     }
 
-    private NavigationPathResponse Failure(string requestId, string message)
+    private NavigationPathResponse Failure(string requestId, string message, bool mismatch = false)
     {
         return new NavigationPathResponse
         {
@@ -162,7 +158,8 @@ public sealed class ServerNavigation
             Points = Array.Empty<JVector>(),
             Message = message,
             RequestId = requestId,
-            ArtifactHash = ArtifactHash
+            ArtifactHash = ArtifactHash,
+            ServerMismatchDetected = mismatch
         };
     }
 

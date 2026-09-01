@@ -134,6 +134,11 @@ namespace CustomNavigation.Editor
                         item.Artifact.ArtifactHash,
                         item.Artifact.SchemaVersion,
                         item.Artifact.DotRecastVersion,
+                        item.Artifact.Precision,
+                        item.Artifact.CanonicalJitterAssemblySha256,
+                        item.Artifact.DeterministicMathCompatibilityId,
+                        item.Artifact.FingerprintAlgorithmVersion,
+                        item.Artifact.FingerprintAlgorithmId,
                         item.Artifact.AgentProfileId,
                         item.Artifact.PolygonCount,
                         item.Artifact.SourceMeshCount,
@@ -200,6 +205,14 @@ namespace CustomNavigation.Editor
                 || !string.Equals(manifest.schemaVersion, artifact.SchemaVersion, StringComparison.Ordinal)
                 || !string.Equals(manifest.dotRecastVersion, artifact.DotRecastVersion,
                     StringComparison.Ordinal)
+                || !string.Equals(manifest.precision, artifact.Precision, StringComparison.Ordinal)
+                || !string.Equals(manifest.canonicalJitterAssemblySha256,
+                    artifact.CanonicalJitterAssemblySha256, StringComparison.Ordinal)
+                || !string.Equals(manifest.deterministicMathCompatibilityId,
+                    artifact.DeterministicMathCompatibilityId, StringComparison.Ordinal)
+                || manifest.fingerprintAlgorithmVersion != artifact.FingerprintAlgorithmVersion
+                || !string.Equals(manifest.fingerprintAlgorithmId,
+                    artifact.FingerprintAlgorithmId, StringComparison.Ordinal)
                 || manifest.polygonCount != artifact.PolygonCount
                 || manifest.sourceMeshCount != artifact.SourceMeshCount)
             {

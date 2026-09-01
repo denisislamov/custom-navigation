@@ -160,7 +160,13 @@ namespace CustomNavigation.Editor.Tests
 
                 TextAsset payload = AssetDatabase.LoadAssetAtPath<TextAsset>(payloadPath);
                 var artifact = ScriptableObject.CreateInstance<NavigationArtifactAsset>();
-                artifact.Configure(levelId, hash, "1", "test", "agent", 1, 1, payload, "{}");
+                artifact.Configure(levelId, hash, "1", "test",
+                    NavigationCompatibilityContract.Precision,
+                    NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                    NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                    NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                    NavigationCompatibilityContract.FingerprintAlgorithmId,
+                    "agent", 1, 1, payload, "{}");
                 AssetDatabase.CreateAsset(artifact, artifactPath);
 
                 Assert.That(

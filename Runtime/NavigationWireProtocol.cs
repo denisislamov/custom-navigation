@@ -7,7 +7,7 @@ namespace CustomNavigation.Runtime
     {
         public const int Version = 2;
         public const string RuntimeCompatibilityId =
-            "cn-jmp-v2-f32-54b456c04074909605d2ba138e5001d39a90a338885eafcb32265483b35054b0";
+            "cn-jmp-v2-f32-jitter-944666bb-math-54b456c0-fingerprint-v2";
     }
 
     public enum NavigationWireErrorCode
@@ -20,7 +20,11 @@ namespace CustomNavigation.Runtime
         NonFiniteNumber,
         NumberOverflow,
         ProtocolMismatch,
-        RuntimeCompatibilityMismatch
+        RuntimeCompatibilityMismatch,
+        PrecisionMismatch,
+        CanonicalJitterMismatch,
+        DeterministicMathMismatch,
+        FingerprintAlgorithmMismatch
     }
 
     public sealed class NavigationWireFormatException : FormatException
@@ -38,6 +42,10 @@ namespace CustomNavigation.Runtime
     {
         public int ProtocolVersion { get; set; } = NavigationWireProtocol.Version;
         public string RuntimeCompatibilityId { get; set; } = NavigationWireProtocol.RuntimeCompatibilityId;
+        public string Precision { get; set; } = NavigationCompatibilityContract.Precision;
+        public string CanonicalJitterAssemblySha256 { get; set; } = NavigationCompatibilityContract.CanonicalJitterAssemblySha256;
+        public string DeterministicMathCompatibilityId { get; set; } = NavigationCompatibilityContract.DeterministicMathCompatibilityId;
+        public int FingerprintAlgorithmVersion { get; set; } = NavigationCompatibilityContract.FingerprintAlgorithmVersion;
         public string RequestId { get; set; } = string.Empty;
         public string LevelId { get; set; } = string.Empty;
         public JVector Start { get; set; }
@@ -50,6 +58,10 @@ namespace CustomNavigation.Runtime
     {
         public int ProtocolVersion { get; set; } = NavigationWireProtocol.Version;
         public string RuntimeCompatibilityId { get; set; } = NavigationWireProtocol.RuntimeCompatibilityId;
+        public string Precision { get; set; } = NavigationCompatibilityContract.Precision;
+        public string CanonicalJitterAssemblySha256 { get; set; } = NavigationCompatibilityContract.CanonicalJitterAssemblySha256;
+        public string DeterministicMathCompatibilityId { get; set; } = NavigationCompatibilityContract.DeterministicMathCompatibilityId;
+        public int FingerprintAlgorithmVersion { get; set; } = NavigationCompatibilityContract.FingerprintAlgorithmVersion;
         public bool Success { get; set; }
         public JVector[] Points { get; set; } = Array.Empty<JVector>();
         public string Message { get; set; } = string.Empty;

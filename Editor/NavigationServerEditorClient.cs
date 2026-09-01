@@ -126,6 +126,11 @@ namespace CustomNavigation.Editor
             public string artifactHash;
             public string schemaVersion;
             public string dotRecastVersion;
+            public string precision;
+            public string canonicalJitterAssemblySha256;
+            public string deterministicMathCompatibilityId;
+            public int fingerprintAlgorithmVersion;
+            public string fingerprintAlgorithmId;
             public string agentProfileId;
             public int polygonCount;
             public int sourceMeshCount;
@@ -146,6 +151,11 @@ namespace CustomNavigation.Editor
             public string levelId;
             public string description;
             public string artifactHash;
+            public string schemaVersion;
+            public string precision;
+            public string canonicalJitterAssemblySha256;
+            public string deterministicMathCompatibilityId;
+            public int fingerprintAlgorithmVersion;
 
             /// <summary>Set when <see cref="status"/> is not "ok": says what to do about it.</summary>
             public string message;

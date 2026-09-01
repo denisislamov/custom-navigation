@@ -15,7 +15,7 @@ namespace CustomNavigation.Editor.Tests
                 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
                 Assert.That(
                     NavigationWireConformanceFixtures.Run(),
-                    Is.EqualTo("P04_WIRE_CONFORMANCE_OK valid=4 invalid=11"));
+                    Is.EqualTo("P04_WIRE_CONFORMANCE_OK valid=4 invalid=15"));
             }
             finally
             {

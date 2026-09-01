@@ -101,8 +101,8 @@ namespace CustomNavigation.Editor
 
     internal static class NavigationArtifactBuilder
     {
-        public const string SchemaVersion = "1";
-        public const string DotRecastVersion = "2026.1.3";
+        public const string SchemaVersion = NavigationCompatibilityContract.ArtifactSchemaVersion;
+        public const string DotRecastVersion = NavigationCompatibilityContract.DotRecastVersion;
         public const string GeneratedClientFolder = "Assets/DataSakura/CustomNavigation/Generated/Navigation";
         public const string ActiveManifestFileName = "active.manifest.json";
         public const string NavigationDataSuffix = ".navigation.bytes";
@@ -363,6 +363,11 @@ namespace CustomNavigation.Editor
             {
                 schemaVersion = SchemaVersion,
                 dotRecastVersion = DotRecastVersion,
+                precision = NavigationCompatibilityContract.Precision,
+                canonicalJitterAssemblySha256 = NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                deterministicMathCompatibilityId = NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                fingerprintAlgorithmVersion = NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                fingerprintAlgorithmId = NavigationCompatibilityContract.FingerprintAlgorithmId,
                 levelId = safeLevelId,
                 description = level.Description,
                 artifactHash = hash,
@@ -398,6 +403,11 @@ namespace CustomNavigation.Editor
                 hash,
                 SchemaVersion,
                 DotRecastVersion,
+                NavigationCompatibilityContract.Precision,
+                NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                NavigationCompatibilityContract.FingerprintAlgorithmVersion,
+                NavigationCompatibilityContract.FingerprintAlgorithmId,
                 level.DefaultAgentProfile.ProfileId,
                 built.PolygonCount,
                 built.SourceMeshCount,
@@ -712,6 +722,23 @@ namespace CustomNavigation.Editor
                 return false;
             }
 
+            try
+            {
+                NavigationCompatibilityContract.ValidateArtifact(
+                    manifest.schemaVersion,
+                    manifest.dotRecastVersion,
+                    manifest.precision,
+                    manifest.canonicalJitterAssemblySha256,
+                    manifest.deterministicMathCompatibilityId,
+                    manifest.fingerprintAlgorithmVersion,
+                    manifest.fingerprintAlgorithmId);
+            }
+            catch (NavigationCompatibilityException exception)
+            {
+                error = exception.Message;
+                return false;
+            }
+
             if (!string.Equals(manifest.levelId, artifact.LevelId, StringComparison.Ordinal)
                 || !string.Equals(manifest.artifactHash, artifact.ArtifactHash,
                     StringComparison.OrdinalIgnoreCase)
@@ -719,6 +746,14 @@ namespace CustomNavigation.Editor
                     StringComparison.Ordinal)
                 || !string.Equals(manifest.dotRecastVersion, artifact.DotRecastVersion,
                     StringComparison.Ordinal)
+                || !string.Equals(manifest.precision, artifact.Precision, StringComparison.Ordinal)
+                || !string.Equals(manifest.canonicalJitterAssemblySha256,
+                    artifact.CanonicalJitterAssemblySha256, StringComparison.Ordinal)
+                || !string.Equals(manifest.deterministicMathCompatibilityId,
+                    artifact.DeterministicMathCompatibilityId, StringComparison.Ordinal)
+                || manifest.fingerprintAlgorithmVersion != artifact.FingerprintAlgorithmVersion
+                || !string.Equals(manifest.fingerprintAlgorithmId,
+                    artifact.FingerprintAlgorithmId, StringComparison.Ordinal)
                 || !string.Equals(manifest.agentProfileId, artifact.AgentProfileId,
                     StringComparison.Ordinal)
                 || manifest.polygonCount != artifact.PolygonCount
@@ -1332,6 +1367,11 @@ namespace CustomNavigation.Editor
         {
             public string schemaVersion;
             public string dotRecastVersion;
+            public string precision;
+            public string canonicalJitterAssemblySha256;
+            public string deterministicMathCompatibilityId;
+            public int fingerprintAlgorithmVersion;
+            public string fingerprintAlgorithmId;
             public string levelId;
             public string description;
             public string artifactHash;

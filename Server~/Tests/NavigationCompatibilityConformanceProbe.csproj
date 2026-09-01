@@ -10,14 +10,12 @@
     <UseAppHost>false</UseAppHost>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="NavigationWireConformanceProgram.cs" />
-    <Compile Include="../../Runtime/NavigationJitterValidation.cs" Link="Shared/NavigationJitterValidation.cs" />
+    <Compile Include="NavigationCompatibilityConformanceProgram.cs" />
     <Compile Include="../../Runtime/CanonicalJitterContract.cs" Link="Shared/CanonicalJitterContract.cs" />
+    <Compile Include="../../Runtime/NavigationJitterValidation.cs" Link="Shared/NavigationJitterValidation.cs" />
     <Compile Include="../../Runtime/NavigationPathFingerprint.cs" Link="Shared/NavigationPathFingerprint.cs" />
     <Compile Include="../../Runtime/NavigationCompatibilityContract.cs" Link="Shared/NavigationCompatibilityContract.cs" />
-    <Compile Include="../../Runtime/NavigationWireProtocol.cs" Link="Shared/NavigationWireProtocol.cs" />
-    <Compile Include="../../Runtime/NavigationWireCodec.cs" Link="Shared/NavigationWireCodec.cs" />
-    <Compile Include="../../Tests/Shared/NavigationWireConformanceFixtures.cs" Link="Shared/NavigationWireConformanceFixtures.cs" />
+    <Compile Include="../../Tests/Shared/NavigationCompatibilityConformanceFixtures.cs" Link="Shared/NavigationCompatibilityConformanceFixtures.cs" />
     <Reference Include="Jitter2.Core">
       <HintPath>$(CanonicalJitterRoot)/Jitter2.Core.dll</HintPath>
       <Private>true</Private>
@@ -28,9 +26,6 @@
     </Reference>
   </ItemGroup>
   <Target Name="RequireCanonicalJitter" BeforeTargets="ResolveReferences">
-    <Error Condition="'$(CanonicalJitterRoot)' == ''"
-           Text="CanonicalJitterRoot is required." />
-    <Error Condition="!Exists('$(CanonicalJitterRoot)/Jitter2.Core.dll')"
-           Text="Jitter2.Core.dll is missing from CanonicalJitterRoot." />
+    <Error Condition="'$(CanonicalJitterRoot)' == ''" Text="CanonicalJitterRoot is required." />
   </Target>
 </Project>

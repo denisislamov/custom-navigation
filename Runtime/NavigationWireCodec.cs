@@ -13,11 +13,17 @@ namespace CustomNavigation.Runtime
         public static string EncodeRequest(NavigationPathRequest value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
-            ValidateIdentity(value.ProtocolVersion, value.RuntimeCompatibilityId);
+            ValidateIdentity(value.ProtocolVersion, value.RuntimeCompatibilityId, value.Precision,
+                value.CanonicalJitterAssemblySha256, value.DeterministicMathCompatibilityId,
+                value.FingerprintAlgorithmVersion);
             var json = new StringBuilder(384);
             json.Append('{');
             Property(json, "protocolVersion", value.ProtocolVersion.ToString(CultureInfo.InvariantCulture));
             Property(json, "runtimeCompatibilityId", Quote(value.RuntimeCompatibilityId), true);
+            Property(json, "precision", Quote(value.Precision), true);
+            Property(json, "canonicalJitterAssemblySha256", Quote(value.CanonicalJitterAssemblySha256), true);
+            Property(json, "deterministicMathCompatibilityId", Quote(value.DeterministicMathCompatibilityId), true);
+            Property(json, "fingerprintAlgorithmVersion", value.FingerprintAlgorithmVersion.ToString(CultureInfo.InvariantCulture), true);
             Property(json, "requestId", Quote(value.RequestId), true);
             Property(json, "levelId", Quote(value.LevelId), true);
             Property(json, "start", Vector(value.Start), true);
@@ -32,18 +38,26 @@ namespace CustomNavigation.Runtime
             var reader = new Reader(json);
             NavigationPathRequest result = reader.ReadRequest();
             reader.RequireEnd();
-            ValidateIdentity(result.ProtocolVersion, result.RuntimeCompatibilityId);
+            ValidateIdentity(result.ProtocolVersion, result.RuntimeCompatibilityId, result.Precision,
+                result.CanonicalJitterAssemblySha256, result.DeterministicMathCompatibilityId,
+                result.FingerprintAlgorithmVersion);
             return result;
         }
 
         public static string EncodeResponse(NavigationPathResponse value)
         {
             if (value == null) throw new ArgumentNullException(nameof(value));
-            ValidateIdentity(value.ProtocolVersion, value.RuntimeCompatibilityId);
+            ValidateIdentity(value.ProtocolVersion, value.RuntimeCompatibilityId, value.Precision,
+                value.CanonicalJitterAssemblySha256, value.DeterministicMathCompatibilityId,
+                value.FingerprintAlgorithmVersion);
             var json = new StringBuilder(512);
             json.Append('{');
             Property(json, "protocolVersion", value.ProtocolVersion.ToString(CultureInfo.InvariantCulture));
             Property(json, "runtimeCompatibilityId", Quote(value.RuntimeCompatibilityId), true);
+            Property(json, "precision", Quote(value.Precision), true);
+            Property(json, "canonicalJitterAssemblySha256", Quote(value.CanonicalJitterAssemblySha256), true);
+            Property(json, "deterministicMathCompatibilityId", Quote(value.DeterministicMathCompatibilityId), true);
+            Property(json, "fingerprintAlgorithmVersion", value.FingerprintAlgorithmVersion.ToString(CultureInfo.InvariantCulture), true);
             Property(json, "success", value.Success ? "true" : "false", true);
             Property(json, "points", Vectors(value.Points), true);
             Property(json, "message", Quote(value.Message), true);
@@ -59,11 +73,19 @@ namespace CustomNavigation.Runtime
             var reader = new Reader(json);
             NavigationPathResponse result = reader.ReadResponse();
             reader.RequireEnd();
-            ValidateIdentity(result.ProtocolVersion, result.RuntimeCompatibilityId);
+            ValidateIdentity(result.ProtocolVersion, result.RuntimeCompatibilityId, result.Precision,
+                result.CanonicalJitterAssemblySha256, result.DeterministicMathCompatibilityId,
+                result.FingerprintAlgorithmVersion);
             return result;
         }
 
-        private static void ValidateIdentity(int version, string compatibilityId)
+        private static void ValidateIdentity(
+            int version,
+            string compatibilityId,
+            string precision,
+            string canonicalJitterAssemblySha256,
+            string deterministicMathCompatibilityId,
+            int fingerprintAlgorithmVersion)
         {
             if (version != NavigationWireProtocol.Version)
             {
@@ -75,6 +97,27 @@ namespace CustomNavigation.Runtime
                 throw Error(NavigationWireErrorCode.RuntimeCompatibilityMismatch,
                     "runtimeCompatibilityId does not match this runtime.");
             }
+            RequireIdentity(precision, NavigationCompatibilityContract.Precision,
+                NavigationWireErrorCode.PrecisionMismatch, "precision");
+            RequireIdentity(canonicalJitterAssemblySha256,
+                NavigationCompatibilityContract.CanonicalJitterAssemblySha256,
+                NavigationWireErrorCode.CanonicalJitterMismatch, "canonicalJitterAssemblySha256");
+            RequireIdentity(deterministicMathCompatibilityId,
+                NavigationCompatibilityContract.DeterministicMathCompatibilityId,
+                NavigationWireErrorCode.DeterministicMathMismatch, "deterministicMathCompatibilityId");
+            if (fingerprintAlgorithmVersion != NavigationCompatibilityContract.FingerprintAlgorithmVersion)
+                throw Error(NavigationWireErrorCode.FingerprintAlgorithmMismatch,
+                    "fingerprintAlgorithmVersion does not match this runtime.");
+        }
+
+        private static void RequireIdentity(
+            string actual,
+            string expected,
+            NavigationWireErrorCode code,
+            string field)
+        {
+            if (!string.Equals(actual, expected, StringComparison.Ordinal))
+                throw Error(code, field + " does not match this runtime.");
         }
 
         private static string Vectors(JVector[] values)
@@ -159,6 +202,10 @@ namespace CustomNavigation.Runtime
                     {
                         case "protocolVersion": value.ProtocolVersion = ReadInteger(); break;
                         case "runtimeCompatibilityId": value.RuntimeCompatibilityId = ReadString(); break;
+                        case "precision": value.Precision = ReadString(); break;
+                        case "canonicalJitterAssemblySha256": value.CanonicalJitterAssemblySha256 = ReadString(); break;
+                        case "deterministicMathCompatibilityId": value.DeterministicMathCompatibilityId = ReadString(); break;
+                        case "fingerprintAlgorithmVersion": value.FingerprintAlgorithmVersion = ReadInteger(); break;
                         case "requestId": value.RequestId = ReadString(); break;
                         case "levelId": value.LevelId = ReadString(); break;
                         case "start": value.Start = ReadVector(); break;
@@ -168,7 +215,7 @@ namespace CustomNavigation.Runtime
                         default: throw Error(NavigationWireErrorCode.UnexpectedProperty, "Unexpected request property: " + property);
                     }
                 });
-                Require(seen, "protocolVersion", "runtimeCompatibilityId", "requestId", "levelId", "start", "destination", "clientArtifactHash", "clientPathFingerprint");
+                Require(seen, "protocolVersion", "runtimeCompatibilityId", "precision", "canonicalJitterAssemblySha256", "deterministicMathCompatibilityId", "fingerprintAlgorithmVersion", "requestId", "levelId", "start", "destination", "clientArtifactHash", "clientPathFingerprint");
                 return value;
             }
 
@@ -183,6 +230,10 @@ namespace CustomNavigation.Runtime
                     {
                         case "protocolVersion": value.ProtocolVersion = ReadInteger(); break;
                         case "runtimeCompatibilityId": value.RuntimeCompatibilityId = ReadString(); break;
+                        case "precision": value.Precision = ReadString(); break;
+                        case "canonicalJitterAssemblySha256": value.CanonicalJitterAssemblySha256 = ReadString(); break;
+                        case "deterministicMathCompatibilityId": value.DeterministicMathCompatibilityId = ReadString(); break;
+                        case "fingerprintAlgorithmVersion": value.FingerprintAlgorithmVersion = ReadInteger(); break;
                         case "success": value.Success = ReadBoolean(); break;
                         case "points": value.Points = ReadVectors(); break;
                         case "message": value.Message = ReadString(); break;
@@ -193,7 +244,7 @@ namespace CustomNavigation.Runtime
                         default: throw Error(NavigationWireErrorCode.UnexpectedProperty, "Unexpected response property: " + property);
                     }
                 });
-                Require(seen, "protocolVersion", "runtimeCompatibilityId", "success", "points", "message", "requestId", "artifactHash", "pathFingerprint", "serverMismatchDetected");
+                Require(seen, "protocolVersion", "runtimeCompatibilityId", "precision", "canonicalJitterAssemblySha256", "deterministicMathCompatibilityId", "fingerprintAlgorithmVersion", "success", "points", "message", "requestId", "artifactHash", "pathFingerprint", "serverMismatchDetected");
                 return value;
             }
 

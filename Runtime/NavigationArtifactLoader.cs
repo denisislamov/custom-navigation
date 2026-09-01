@@ -39,8 +39,8 @@ namespace CustomNavigation.Runtime
 
     public static class NavigationArtifactLoader
     {
-        public const string SupportedSchemaVersion = "1";
-        public const string SupportedDotRecastVersion = "2026.1.3";
+        public const string SupportedSchemaVersion = NavigationCompatibilityContract.ArtifactSchemaVersion;
+        public const string SupportedDotRecastVersion = NavigationCompatibilityContract.DotRecastVersion;
 
         public static NavigationArtifactInstance Load(NavigationArtifactAsset artifact)
         {
@@ -49,30 +49,19 @@ namespace CustomNavigation.Runtime
                 throw new ArgumentNullException(nameof(artifact));
             }
 
+            NavigationCompatibilityContract.ValidateArtifact(
+                artifact.SchemaVersion,
+                artifact.DotRecastVersion,
+                artifact.Precision,
+                artifact.CanonicalJitterAssemblySha256,
+                artifact.DeterministicMathCompatibilityId,
+                artifact.FingerprintAlgorithmVersion,
+                artifact.FingerprintAlgorithmId);
+
             if (artifact.NavigationData == null)
             {
                 throw new InvalidOperationException(
                     $"Navigation artifact '{artifact.name}' has no binary data.");
-            }
-
-            if (!string.Equals(
-                    artifact.SchemaVersion,
-                    SupportedSchemaVersion,
-                    StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"Unsupported navigation schema '{artifact.SchemaVersion}'. " +
-                    $"Runtime supports '{SupportedSchemaVersion}'.");
-            }
-
-            if (!string.Equals(
-                    artifact.DotRecastVersion,
-                    SupportedDotRecastVersion,
-                    StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException(
-                    $"Navigation artifact uses DotRecast '{artifact.DotRecastVersion}', " +
-                    $"runtime uses '{SupportedDotRecastVersion}'.");
             }
 
             byte[] bytes = artifact.NavigationData.bytes;
