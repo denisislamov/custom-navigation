@@ -10,7 +10,8 @@
   "overrideReferences": true,
   "precompiledReferences": [
     "DotRecast.Core.dll",
-    "DotRecast.Detour.dll"
+    "DotRecast.Detour.dll",
+    "Jitter2.Core.dll"
   ],
   "autoReferenced": true,
   "defineConstraints": [],

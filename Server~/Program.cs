@@ -2,6 +2,7 @@ using System.Net;
 using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
+using CustomNavigation.Runtime;
 using DotRecastServer;
 using DotRecastServer.Navigation;
 
@@ -12,6 +13,11 @@ var jsonOptions = new JsonSerializerOptions
     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     PropertyNameCaseInsensitive = true
 };
+
+CanonicalJitterContract.ValidateInstalledFiles(Directory.GetFiles(
+    AppContext.BaseDirectory,
+    "Jitter2.Core.dll",
+    SearchOption.AllDirectories));
 
 Console.WriteLine("[startup] Loading the exported DotRecast artifact...");
 string navigationDataDirectory = NavigationArtifactStore.ResolveDataDirectory(args);

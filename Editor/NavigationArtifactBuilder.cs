@@ -313,6 +313,8 @@ namespace CustomNavigation.Editor
                 throw new ArgumentNullException(nameof(level));
             }
 
+            CanonicalJitterEditorPreflight.EnsureReady();
+
             progress?.Stage("Validating the level");
             string requestedLevelId = string.IsNullOrEmpty(effectiveLevelId)
                 ? level.LevelId
@@ -840,6 +842,8 @@ namespace CustomNavigation.Editor
 
         private static BuiltNavigation Build(NavigationLevel level, NavigationBuildProgress progress)
         {
+            CanonicalJitterEditorPreflight.EnsureReady();
+
             progress?.Stage("Collecting geometry");
             List<NavigationGeometrySource> sources = level.GeometryRoot
                 .GetComponentsInChildren<NavigationGeometrySource>(true)

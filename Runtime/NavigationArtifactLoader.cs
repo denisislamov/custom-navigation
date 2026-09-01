@@ -91,6 +91,8 @@ namespace CustomNavigation.Runtime
             int expectedPolygonCount,
             byte[] bytes)
         {
+            CanonicalJitterContract.ValidateLoadedAssembly();
+
             if (bytes == null || bytes.Length == 0)
             {
                 throw new InvalidDataException("Navigation artifact binary is empty.");

@@ -138,6 +138,8 @@ namespace CustomNavigation.Runtime
             NavigationAgentProfile agentProfile,
             Func<double> schedulerTimeProvider)
         {
+            CanonicalJitterContract.ValidateLoadedAssembly();
+
             artifact = loadedArtifact ?? throw new ArgumentNullException(nameof(loadedArtifact));
             performance = performanceProfile ?? throw new ArgumentNullException(nameof(performanceProfile));
             if (agentProfile == null)
