@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using CustomNavigation.Authoring;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
@@ -23,7 +25,7 @@ namespace CustomNavigation.Runtime
         [SerializeField, Min(0.1f), Tooltip("Movement speed along the predicted/authoritative path, in meters per second.")]
         private float moveSpeed = 4.5f;
 
-        private readonly List<Vector3> activePath = new List<Vector3>();
+        private readonly List<JVector> activePath = new List<JVector>();
         private readonly List<Mesh> generatedMeshes = new List<Mesh>();
         private readonly List<Material> generatedMaterials = new List<Material>();
 
@@ -174,20 +176,21 @@ namespace CustomNavigation.Runtime
         {
             int version = ++requestVersion;
             string requestId = $"unity-{version}-{Guid.NewGuid():N}";
-            Vector3 requestStart = PlayerGroundPosition();
+            JVector requestStart = NavigationUnityAdapter.ToJitter(PlayerGroundPosition());
+            JVector canonicalDestination = NavigationUnityAdapter.ToJitter(destination);
             status = $"[{requestId}] calculating local prediction...";
             localNavigation.RequestPath(
                 requestStart,
-                destination,
+                canonicalDestination,
                 NavigationQueryPriority.PlayerImmediate,
-                result => OnLocalPath(version, requestId, requestStart, destination, result));
+                result => OnLocalPath(version, requestId, requestStart, canonicalDestination, result));
         }
 
         private void OnLocalPath(
             int version,
             string requestId,
-            Vector3 requestStart,
-            Vector3 destination,
+            JVector requestStart,
+            JVector destination,
             NavigationPathResult result)
         {
             if (version != requestVersion)
@@ -226,16 +229,16 @@ namespace CustomNavigation.Runtime
         private IEnumerator RequestServerPath(
             int version,
             string requestId,
-            Vector3 requestStart,
-            Vector3 destination,
+            JVector requestStart,
+            JVector destination,
             string localFingerprint,
             bool localSucceeded)
         {
             var payload = new HybridPathRequest
             {
                 requestId = requestId,
-                start = HybridVector3.FromUnity(requestStart),
-                destination = HybridVector3.FromUnity(destination),
+                start = HybridVector3.FromJitter(requestStart),
+                destination = HybridVector3.FromJitter(destination),
                 clientArtifactHash = localNavigation.Scheduler.Artifact.ArtifactHash,
                 clientPathFingerprint = localFingerprint
             };
@@ -283,10 +286,10 @@ namespace CustomNavigation.Runtime
                 yield break;
             }
 
-            var serverPoints = new Vector3[response.points.Length];
+            var serverPoints = new JVector[response.points.Length];
             for (int i = 0; i < response.points.Length; i++)
             {
-                serverPoints[i] = response.points[i].ToUnity();
+                serverPoints[i] = response.points[i].ToJitter();
             }
 
             string calculatedServerFingerprint = NavigationPathFingerprint.Compute(serverPoints);
@@ -328,7 +331,7 @@ namespace CustomNavigation.Runtime
             }
         }
 
-        private void ApplyPath(IReadOnlyList<Vector3> points, Material material)
+        private void ApplyPath(IReadOnlyList<JVector> points, Material material)
         {
             activePath.Clear();
             for (int i = 0; i < points.Count; i++)
@@ -341,10 +344,12 @@ namespace CustomNavigation.Runtime
             pathLine.positionCount = activePath.Count;
             for (int i = 0; i < activePath.Count; i++)
             {
-                pathLine.SetPosition(i, activePath[i] + Vector3.up * 0.13f);
+                pathLine.SetPosition(
+                    i,
+                    NavigationUnityAdapter.ToUnity(activePath[i]) + Vector3.up * 0.13f);
             }
 
-            Vector3 destination = activePath[activePath.Count - 1];
+            Vector3 destination = NavigationUnityAdapter.ToUnity(activePath[activePath.Count - 1]);
             targetMarker.position = destination + Vector3.up * 0.14f;
             targetMarker.gameObject.SetActive(true);
         }
@@ -356,7 +361,7 @@ namespace CustomNavigation.Runtime
                 return;
             }
 
-            Vector3 target = activePath[waypointIndex];
+            Vector3 target = NavigationUnityAdapter.ToUnity(activePath[waypointIndex]);
             Vector3 next = Vector3.MoveTowards(
                 PlayerGroundPosition(),
                 target,
@@ -519,14 +524,17 @@ namespace CustomNavigation.Runtime
             public float y;
             public float z;
 
-            public static HybridVector3 FromUnity(Vector3 value)
+            public static HybridVector3 FromJitter(JVector value)
             {
-                return new HybridVector3 { x = value.x, y = value.y, z = value.z };
+                NavigationJitterValidation.RequireFinite(value, nameof(value));
+                return new HybridVector3 { x = value.X, y = value.Y, z = value.Z };
             }
 
-            public Vector3 ToUnity()
+            public JVector ToJitter()
             {
-                return new Vector3(x, y, z);
+                return NavigationJitterValidation.RequireFinite(
+                    new JVector(x, y, z),
+                    "serverResponsePoint");
             }
         }
     }

@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
@@ -37,7 +39,7 @@ namespace CustomNavigation
         private const float AgentVisualHeight = 0.9f;
         private const float MoveSpeed = 4.5f;
 
-        private readonly List<Vector3> path = new List<Vector3>();
+        private readonly List<JVector> path = new List<JVector>();
         private Transform agent;
         private Transform targetMarker;
         private Camera worldCamera;
@@ -174,8 +176,10 @@ namespace CustomNavigation
             var payload = new ServerPathRequest
             {
                 requestId = $"server-scene-{version}-{Guid.NewGuid():N}",
-                start = ServerVector3.FromUnity(AgentGroundPosition()),
-                destination = ServerVector3.FromUnity(destination),
+                start = ServerVector3.FromJitter(
+                    NavigationUnityAdapter.ToJitter(AgentGroundPosition())),
+                destination = ServerVector3.FromJitter(
+                    NavigationUnityAdapter.ToJitter(destination)),
                 clientArtifactHash = expectedArtifactHash
             };
             byte[] body = Encoding.UTF8.GetBytes(JsonUtility.ToJson(payload));
@@ -239,7 +243,7 @@ namespace CustomNavigation
             {
                 if (points[i] != null)
                 {
-                    path.Add(points[i].ToUnity());
+                    path.Add(points[i].ToJitter());
                 }
             }
 
@@ -253,10 +257,12 @@ namespace CustomNavigation
             pathLine.positionCount = path.Count;
             for (int i = 0; i < path.Count; i++)
             {
-                pathLine.SetPosition(i, path[i] + Vector3.up * 0.13f);
+                pathLine.SetPosition(
+                    i,
+                    NavigationUnityAdapter.ToUnity(path[i]) + Vector3.up * 0.13f);
             }
 
-            Vector3 selectedPoint = path[path.Count - 1];
+            Vector3 selectedPoint = NavigationUnityAdapter.ToUnity(path[path.Count - 1]);
             targetMarker.position = selectedPoint + Vector3.up * 0.14f;
             targetMarker.gameObject.SetActive(true);
             status = string.IsNullOrEmpty(message)
@@ -353,7 +359,8 @@ namespace CustomNavigation
                 return;
             }
 
-            Vector3 waypoint = path[waypointIndex] + Vector3.up * (AgentVisualHeight * 0.5f);
+            Vector3 waypoint = NavigationUnityAdapter.ToUnity(path[waypointIndex])
+                               + Vector3.up * (AgentVisualHeight * 0.5f);
             Vector3 offset = waypoint - agent.position;
             offset.y = 0f;
             if (offset.sqrMagnitude < 0.0025f)
@@ -465,14 +472,17 @@ namespace CustomNavigation
             public float y;
             public float z;
 
-            public Vector3 ToUnity()
+            public JVector ToJitter()
             {
-                return new Vector3(x, y, z);
+                return NavigationJitterValidation.RequireFinite(
+                    new JVector(x, y, z),
+                    "serverResponsePoint");
             }
 
-            public static ServerVector3 FromUnity(Vector3 value)
+            public static ServerVector3 FromJitter(JVector value)
             {
-                return new ServerVector3 { x = value.x, y = value.y, z = value.z };
+                NavigationJitterValidation.RequireFinite(value, nameof(value));
+                return new ServerVector3 { x = value.X, y = value.Y, z = value.Z };
             }
         }
 

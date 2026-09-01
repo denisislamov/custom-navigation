@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using CustomNavigation.Authoring;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -25,7 +27,7 @@ namespace CustomNavigation.Runtime
         private const float PlayerHeight = 0.9f;
         private const float PlayerHalfHeight = PlayerHeight * 0.5f;
 
-        private readonly List<Vector3> path = new List<Vector3>();
+        private readonly List<JVector> path = new List<JVector>();
         private readonly List<Mesh> generatedMeshes = new List<Mesh>();
         private readonly List<Material> generatedMaterials = new List<Material>();
 
@@ -196,8 +198,8 @@ namespace CustomNavigation.Runtime
             requestPending = true;
             status = $"Calculating route to Y={destination.y:0.00} m...";
             navigation.RequestPath(
-                PlayerNavigationPosition(),
-                destination,
+                NavigationUnityAdapter.ToJitter(PlayerNavigationPosition()),
+                NavigationUnityAdapter.ToJitter(destination),
                 NavigationQueryPriority.PlayerImmediate,
                 result => ApplyPath(destination, result));
         }
@@ -221,20 +223,22 @@ namespace CustomNavigation.Runtime
             routeMaximumHeight = float.NegativeInfinity;
             for (int i = 0; i < result.Points.Length; i++)
             {
-                Vector3 point = result.Points[i];
+                JVector point = result.Points[i];
                 path.Add(point);
-                routeMinimumHeight = Mathf.Min(routeMinimumHeight, point.y);
-                routeMaximumHeight = Mathf.Max(routeMaximumHeight, point.y);
+                routeMinimumHeight = Mathf.Min(routeMinimumHeight, point.Y);
+                routeMaximumHeight = Mathf.Max(routeMaximumHeight, point.Y);
             }
 
             waypointIndex = path.Count > 1 ? 1 : 0;
             pathLine.positionCount = path.Count;
             for (int i = 0; i < path.Count; i++)
             {
-                pathLine.SetPosition(i, path[i] + Vector3.up * 0.13f);
+                pathLine.SetPosition(
+                    i,
+                    NavigationUnityAdapter.ToUnity(path[i]) + Vector3.up * 0.13f);
             }
 
-            Vector3 destination = path[path.Count - 1];
+            Vector3 destination = NavigationUnityAdapter.ToUnity(path[path.Count - 1]);
             targetMarker.position = destination + Vector3.up * 0.04f;
             targetMarker.gameObject.SetActive(true);
             status = $"Route ready: {path.Count} points, " +
@@ -254,7 +258,7 @@ namespace CustomNavigation.Runtime
             }
 
             Vector3 current = PlayerNavigationPosition();
-            Vector3 target = path[waypointIndex];
+            Vector3 target = NavigationUnityAdapter.ToUnity(path[waypointIndex]);
             Vector3 next = Vector3.MoveTowards(current, target, moveSpeed * Time.deltaTime);
             player.position = next + Vector3.up * PlayerHalfHeight;
 

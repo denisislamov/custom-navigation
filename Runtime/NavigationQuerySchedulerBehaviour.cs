@@ -1,5 +1,6 @@
 using System;
 using CustomNavigation.Authoring;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 namespace CustomNavigation.Runtime
@@ -87,8 +88,8 @@ namespace CustomNavigation.Runtime
         }
 
         public NavigationPathHandle RequestPath(
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             NavigationQueryPriority priority,
             Action<NavigationPathResult> completion)
         {
@@ -100,7 +101,7 @@ namespace CustomNavigation.Runtime
             return scheduler.RequestPath(start, destination, priority, completion);
         }
 
-        public bool TryProjectPosition(Vector3 position, out Vector3 projectedPosition)
+        public bool TryProjectPosition(JVector position, out JVector projectedPosition)
         {
             if (scheduler == null)
             {

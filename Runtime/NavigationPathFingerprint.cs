@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using UnityEngine;
+using Jitter2.LinearMath;
+using Real = System.Single;
 
 namespace CustomNavigation.Runtime
 {
     public static class NavigationPathFingerprint
     {
-        public static string Compute(IReadOnlyList<Vector3> points)
+        public static string Compute(IReadOnlyList<JVector> points)
         {
             if (points == null)
             {
@@ -19,12 +20,13 @@ namespace CustomNavigation.Runtime
             var canonical = new StringBuilder(points.Count * 32);
             for (int i = 0; i < points.Count; i++)
             {
-                Vector3 point = points[i];
-                canonical.Append(Quantize(point.x).ToString(CultureInfo.InvariantCulture));
+                JVector point = points[i];
+                NavigationJitterValidation.RequireFinite(point, nameof(points));
+                canonical.Append(Quantize(point.X).ToString(CultureInfo.InvariantCulture));
                 canonical.Append(',');
-                canonical.Append(Quantize(point.y).ToString(CultureInfo.InvariantCulture));
+                canonical.Append(Quantize(point.Y).ToString(CultureInfo.InvariantCulture));
                 canonical.Append(',');
-                canonical.Append(Quantize(point.z).ToString(CultureInfo.InvariantCulture));
+                canonical.Append(Quantize(point.Z).ToString(CultureInfo.InvariantCulture));
                 canonical.Append(';');
             }
 
@@ -40,7 +42,7 @@ namespace CustomNavigation.Runtime
             return result.ToString();
         }
 
-        private static long Quantize(float value)
+        private static long Quantize(Real value)
         {
             return (long)Math.Round(value * 1000d, MidpointRounding.AwayFromZero);
         }

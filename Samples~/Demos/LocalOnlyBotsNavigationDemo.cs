@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using CustomNavigation.Authoring;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -33,7 +35,7 @@ namespace CustomNavigation.Runtime
         private readonly List<AgentState> bots = new List<AgentState>();
         private readonly List<Mesh> generatedMeshes = new List<Mesh>();
         private readonly List<Material> generatedMaterials = new List<Material>();
-        private readonly List<Vector3> botTargetPool = new List<Vector3>();
+        private readonly List<JVector> botTargetPool = new List<JVector>();
         private readonly System.Random random = new System.Random(1337);
 
         private AgentState player;
@@ -85,7 +87,8 @@ namespace CustomNavigation.Runtime
             Material backgroundMaterial = CreateMaterial(new Color(0.48f, 0.56f, 0.65f, 1f));
             BuildBotTargetPool();
 
-            Vector3 validPlayerStart = ProjectPositionOrFallback(playerStart, Vector3.zero);
+            Vector3 validPlayerStart = NavigationUnityAdapter.ToUnity(
+                ProjectPositionOrFallback(playerStart, Vector3.zero));
             player = CreateAgent(
                 "Local player",
                 validPlayerStart,
@@ -107,7 +110,7 @@ namespace CustomNavigation.Runtime
                     : priority == NavigationQueryPriority.VisibleBot
                         ? visibleMaterial
                         : backgroundMaterial;
-                Vector3 start = RandomNavigationPoint();
+                Vector3 start = NavigationUnityAdapter.ToUnity(RandomNavigationPoint());
                 AgentState bot = CreateAgent(
                     $"Bot {i + 1:00} [{priority}]",
                     start,
@@ -210,9 +213,11 @@ namespace CustomNavigation.Runtime
             Ray ray = worldCamera.ScreenPointToRay(screenPosition);
             if (TryIntersectHeight(ray, 0f, out Vector3 destination)
                 && IsInsideArena(destination)
-                && navigation.TryProjectPosition(destination, out Vector3 projectedDestination))
+                && navigation.TryProjectPosition(
+                    NavigationUnityAdapter.ToJitter(destination),
+                    out JVector projectedDestination))
             {
-                playerStatus = $"destination X={projectedDestination.x:0.0}, Z={projectedDestination.z:0.0}";
+                playerStatus = $"destination X={projectedDestination.X:0.0}, Z={projectedDestination.Z:0.0}";
                 ShowDestinationMarker(projectedDestination);
                 RequestPath(player, projectedDestination);
             }
@@ -223,11 +228,11 @@ namespace CustomNavigation.Runtime
             RequestPath(bot, RandomNavigationPoint());
         }
 
-        private void RequestPath(AgentState agent, Vector3 destination)
+        private void RequestPath(AgentState agent, JVector destination)
         {
             agent.RequestPending = true;
             navigation.RequestPath(
-                AgentGroundPosition(agent),
+                NavigationUnityAdapter.ToJitter(AgentGroundPosition(agent)),
                 destination,
                 agent.Priority,
                 result => ApplyPath(agent, result));
@@ -272,7 +277,7 @@ namespace CustomNavigation.Runtime
                 return;
             }
 
-            Vector3 target = agent.Path[agent.WaypointIndex];
+            Vector3 target = NavigationUnityAdapter.ToUnity(agent.Path[agent.WaypointIndex]);
             Vector3 current = AgentGroundPosition(agent);
             Vector3 next = Vector3.MoveTowards(current, target, agent.MoveSpeed * Time.deltaTime);
             agent.Transform.position = next + Vector3.up * agent.HalfHeight;
@@ -322,7 +327,7 @@ namespace CustomNavigation.Runtime
             return new Vector3(x, 0f, z);
         }
 
-        private Vector3 RandomNavigationPoint()
+        private JVector RandomNavigationPoint()
         {
             if (botTargetPool.Count > 0)
             {
@@ -342,12 +347,14 @@ namespace CustomNavigation.Runtime
             for (int i = 0; i < attempts && botTargetPool.Count < botTargetPoolSize; i++)
             {
                 Vector3 candidate = RandomPoint();
-                if (!navigation.TryProjectPosition(candidate, out Vector3 projected))
+                if (!navigation.TryProjectPosition(
+                        NavigationUnityAdapter.ToJitter(candidate),
+                        out JVector projected))
                 {
                     continue;
                 }
 
-                Vector2 offset = new Vector2(projected.x - candidate.x, projected.z - candidate.z);
+                Vector2 offset = new Vector2(projected.X - candidate.x, projected.Z - candidate.z);
                 if (offset.sqrMagnitude <= maximumProjectionSquared)
                 {
                     botTargetPool.Add(projected);
@@ -368,14 +375,16 @@ namespace CustomNavigation.Runtime
             }
         }
 
-        private Vector3 ProjectPositionOrFallback(Vector3 requested, Vector3 fallback)
+        private JVector ProjectPositionOrFallback(Vector3 requested, Vector3 fallback)
         {
-            if (navigation.TryProjectPosition(requested, out Vector3 projected))
+            if (navigation.TryProjectPosition(
+                    NavigationUnityAdapter.ToJitter(requested),
+                    out JVector projected))
             {
                 return projected;
             }
 
-            if (navigation.TryProjectPosition(fallback, out projected))
+            if (navigation.TryProjectPosition(NavigationUnityAdapter.ToJitter(fallback), out projected))
             {
                 return projected;
             }
@@ -399,14 +408,15 @@ namespace CustomNavigation.Runtime
             return marker;
         }
 
-        private void ShowDestinationMarker(Vector3 groundPosition)
+        private void ShowDestinationMarker(JVector groundPosition)
         {
             if (playerDestinationMarker == null)
             {
                 return;
             }
 
-            playerDestinationMarker.transform.position = groundPosition + Vector3.up * 0.04f;
+            playerDestinationMarker.transform.position = NavigationUnityAdapter.ToUnity(groundPosition)
+                                                         + Vector3.up * 0.04f;
             playerDestinationMarker.SetActive(true);
         }
 
@@ -491,7 +501,7 @@ namespace CustomNavigation.Runtime
             public readonly NavigationQueryPriority Priority;
             public readonly float MoveSpeed;
             public readonly float HalfHeight;
-            public readonly List<Vector3> Path = new List<Vector3>();
+            public readonly List<JVector> Path = new List<JVector>();
             public int WaypointIndex;
             public bool RequestPending;
             public float NextReplanTime;

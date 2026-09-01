@@ -7,6 +7,7 @@ using System.Security.Cryptography;
 using System.Text;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
 using DotRecast.Core;
 using DotRecast.Core.Numerics;
 using DotRecast.Detour;
@@ -202,8 +203,8 @@ namespace CustomNavigation.Editor
                 var scheduler = new NavigationQueryScheduler(instance, performance, agent);
                 NavigationPathResult scheduledResult = null;
                 scheduler.RequestPath(
-                    new Vector3(-3f, 0f, -3f),
-                    new Vector3(3f, 0f, 3f),
+                    NavigationUnityAdapter.ToJitter(new Vector3(-3f, 0f, -3f)),
+                    NavigationUnityAdapter.ToJitter(new Vector3(3f, 0f, 3f)),
                     NavigationQueryPriority.CombatBot,
                     result => scheduledResult = result);
                 for (int tick = 0; tick < 32 && scheduledResult == null; tick++)

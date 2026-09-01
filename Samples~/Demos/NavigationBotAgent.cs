@@ -1,5 +1,7 @@
 using System;
 using CustomNavigation.Authoring;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 namespace CustomNavigation.Runtime
@@ -84,7 +86,7 @@ namespace CustomNavigation.Runtime
         private const float WaypointHeightWarningThreshold = 1.5f;
 
         private BotState state = BotState.Idle;
-        private Vector3[] currentPath;
+        private JVector[] currentPath;
         private int pathPointIndex;
         private int waypointIndex;
         private int patrolDirection = 1;
@@ -177,7 +179,9 @@ namespace CustomNavigation.Runtime
                     continue;
                 }
 
-                if (!navigation.TryProjectPosition(authored, out Vector3 projected))
+                if (!navigation.TryProjectPosition(
+                        NavigationUnityAdapter.ToJitter(authored),
+                        out JVector projected))
                 {
                     Debug.LogWarning(
                         $"[NavigationBotAgent] Waypoint {i} ({authored}) is off the navmesh - " +
@@ -186,12 +190,12 @@ namespace CustomNavigation.Runtime
                     continue;
                 }
 
-                float verticalDelta = Mathf.Abs(projected.y - authored.y);
+                float verticalDelta = Mathf.Abs(projected.Y - authored.y);
                 if (verticalDelta > WaypointHeightWarningThreshold)
                 {
                     Debug.LogWarning(
                         $"[NavigationBotAgent] Waypoint {i} sits at height y={authored.y:0.##}, " +
-                        $"while the nearest navmesh is at y={projected.y:0.##} (delta {verticalDelta:0.##}). " +
+                        $"while the nearest navmesh is at y={projected.Y:0.##} (delta {verticalDelta:0.##}). " +
                         "In a multi-level scene this usually means the point stayed at y=0 " +
                         "and the bot will walk on the lowest floor. Raise the waypoint to the intended floor.",
                         this);
@@ -205,9 +209,11 @@ namespace CustomNavigation.Runtime
         /// </summary>
         private void SnapToNavMesh()
         {
-            if (navigation.TryProjectPosition(transform.position, out Vector3 projected))
+            if (navigation.TryProjectPosition(
+                    NavigationUnityAdapter.ToJitter(transform.position),
+                    out JVector projected))
             {
-                transform.position = projected + Vector3.up * groundOffset;
+                transform.position = NavigationUnityAdapter.ToUnity(projected) + Vector3.up * groundOffset;
                 return;
             }
 
@@ -250,7 +256,8 @@ namespace CustomNavigation.Runtime
             }
 
             Vector3 myPos = transform.position;
-            Vector3 target = currentPath[pathPointIndex] + Vector3.up * groundOffset;
+            Vector3 target = NavigationUnityAdapter.ToUnity(currentPath[pathPointIndex])
+                             + Vector3.up * groundOffset;
 
             // Move in 3D so that the bot climbs and descends ramps and
             // multi-level geometry instead of crawling at a single height.
@@ -329,26 +336,27 @@ namespace CustomNavigation.Runtime
             CancelPending();
             state = BotState.RequestingPath;
             int version = ++requestVersion;
-            Vector3 start = transform.position;
+            JVector start = NavigationUnityAdapter.ToJitter(transform.position);
+            JVector canonicalDestination = NavigationUnityAdapter.ToJitter(destination);
 
             if (computeMode == NavigationComputeMode.ServerOnly)
             {
-                StartServerRequest(version, start, destination, string.Empty, false);
+                StartServerRequest(version, start, canonicalDestination, string.Empty, false);
                 return;
             }
 
             pendingHandle = navigation.RequestPath(
                 start,
-                destination,
+                canonicalDestination,
                 queryPriority,
-                result => OnLocalPathReceived(version, start, destination, result));
+                result => OnLocalPathReceived(version, start, canonicalDestination, result));
             hasPendingHandle = true;
         }
 
         private void OnLocalPathReceived(
             int version,
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             NavigationPathResult result)
         {
             hasPendingHandle = false;
@@ -387,8 +395,8 @@ namespace CustomNavigation.Runtime
 
         private void StartServerRequest(
             int version,
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             string localFingerprint,
             bool localSucceeded)
         {
@@ -464,7 +472,7 @@ namespace CustomNavigation.Runtime
             ApplyPath(result.Points, true);
         }
 
-        private void ApplyPath(Vector3[] points, bool fromServer)
+        private void ApplyPath(JVector[] points, bool fromServer)
         {
             currentPath = points;
             pathPointIndex = 0;
@@ -539,7 +547,10 @@ namespace CustomNavigation.Runtime
             pathLine.SetPosition(0, transform.position);
             for (int i = 0; i < remaining; i++)
             {
-                pathLine.SetPosition(i + 1, currentPath[pathPointIndex + i] + Vector3.up * 0.05f);
+                pathLine.SetPosition(
+                    i + 1,
+                    NavigationUnityAdapter.ToUnity(currentPath[pathPointIndex + i])
+                    + Vector3.up * 0.05f);
             }
         }
 

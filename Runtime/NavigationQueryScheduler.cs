@@ -5,7 +5,8 @@ using System.Threading;
 using CustomNavigation.Authoring;
 using DotRecast.Core.Numerics;
 using DotRecast.Detour;
-using UnityEngine;
+using Jitter2.LinearMath;
+using Real = System.Single;
 
 namespace CustomNavigation.Runtime
 {
@@ -34,7 +35,7 @@ namespace CustomNavigation.Runtime
         public bool IsPartial { get; }
         public bool IsCanceled { get; }
         public string Message { get; }
-        public Vector3[] Points { get; }
+        public JVector[] Points { get; }
         public int Iterations { get; }
         public double LatencyMilliseconds { get; }
 
@@ -44,7 +45,7 @@ namespace CustomNavigation.Runtime
             bool isPartial,
             bool isCanceled,
             string message,
-            Vector3[] points,
+            JVector[] points,
             int iterations,
             double latencyMilliseconds)
         {
@@ -53,7 +54,7 @@ namespace CustomNavigation.Runtime
             IsPartial = isPartial;
             IsCanceled = isCanceled;
             Message = message;
-            Points = points ?? Array.Empty<Vector3>();
+            Points = points ?? Array.Empty<JVector>();
             Iterations = iterations;
             LatencyMilliseconds = latencyMilliseconds;
         }
@@ -150,10 +151,11 @@ namespace CustomNavigation.Runtime
             ownerThreadId = Thread.CurrentThread.ManagedThreadId;
             timeProvider = schedulerTimeProvider ?? NowSeconds;
             filter = CreateFilter(agentProfile);
-            nearestPolyExtents = new RcVec3f(
-                Mathf.Max(1f, agentProfile.Radius * 4f),
-                Mathf.Max(2f, agentProfile.Height * 2f),
-                Mathf.Max(1f, agentProfile.Radius * 4f));
+            Real horizontalExtent = agentProfile.Radius * 4f;
+            Real verticalExtent = agentProfile.Height * 2f;
+            horizontalExtent = horizontalExtent < 1f ? 1f : horizontalExtent;
+            verticalExtent = verticalExtent < 2f ? 2f : verticalExtent;
+            nearestPolyExtents = new RcVec3f(horizontalExtent, verticalExtent, horizontalExtent);
             projectionQuery = artifact.CreateQuery();
 
             for (int i = 0; i < performance.MaximumConcurrentSlicedQueries; i++)
@@ -165,9 +167,10 @@ namespace CustomNavigation.Runtime
             }
         }
 
-        public bool TryProjectPosition(Vector3 position, out Vector3 projectedPosition)
+        public bool TryProjectPosition(JVector position, out JVector projectedPosition)
         {
             EnsureOwnerThread();
+            NavigationJitterValidation.RequireFinite(position, nameof(position));
             DtStatus status = projectionQuery.FindNearestPoly(
                 ToRc(position),
                 nearestPolyExtents,
@@ -181,13 +184,13 @@ namespace CustomNavigation.Runtime
                 return false;
             }
 
-            projectedPosition = new Vector3(nearestPoint.X, nearestPoint.Y, nearestPoint.Z);
+            projectedPosition = FromRc(nearestPoint);
             return true;
         }
 
         public NavigationPathHandle RequestPath(
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             NavigationQueryPriority priority,
             Action<NavigationPathResult> completion)
         {
@@ -196,6 +199,9 @@ namespace CustomNavigation.Runtime
             {
                 throw new ArgumentNullException(nameof(completion));
             }
+
+            NavigationJitterValidation.RequireFinite(start, nameof(start));
+            NavigationJitterValidation.RequireFinite(destination, nameof(destination));
 
             long requestId = ++nextRequestId;
             var request = new PendingQuery(
@@ -281,12 +287,12 @@ namespace CustomNavigation.Runtime
                         false,
                         true,
                         "Navigation request was canceled.",
-                        Array.Empty<Vector3>());
+                        Array.Empty<JVector>());
                     continue;
                 }
 
                 int remainingFrameIterations = performance.MaximumIterationsPerFrame - lastFrameIterations;
-                int stepIterations = Mathf.Min(
+                int stepIterations = Math.Min(
                     performance.MaximumIterationsPerQueryStep,
                     remainingFrameIterations);
                 DtStatus status = query.Query.UpdateSlicedFindPath(stepIterations, out int completedIterations);
@@ -308,7 +314,7 @@ namespace CustomNavigation.Runtime
                         false,
                         false,
                         "DotRecast sliced query failed.",
-                        Array.Empty<Vector3>());
+                        Array.Empty<JVector>());
                     continue;
                 }
 
@@ -330,7 +336,7 @@ namespace CustomNavigation.Runtime
 
             while (active.Count > 0)
             {
-                FinishActive(0, false, false, true, reason, Array.Empty<Vector3>());
+                FinishActive(0, false, false, true, reason, Array.Empty<JVector>());
             }
 
             canceled.Clear();
@@ -435,14 +441,14 @@ namespace CustomNavigation.Runtime
                     false,
                     false,
                     "DotRecast returned no polygon corridor.",
-                    Array.Empty<Vector3>());
+                    Array.Empty<JVector>());
                 return;
             }
 
             DtStraightPath[] straightPath = query.Workspace.StraightPath;
             DtStatus straightStatus = query.Query.FindStraightPath(
-                query.NearestStart,
-                query.NearestEnd,
+                ToRc(query.NearestStart),
+                ToRc(query.NearestEnd),
                 polygonPath.AsSpan(),
                 polygonCount,
                 straightPath.AsSpan(),
@@ -457,15 +463,15 @@ namespace CustomNavigation.Runtime
                     false,
                     false,
                     "DotRecast returned no straight path.",
-                    Array.Empty<Vector3>());
+                    Array.Empty<JVector>());
                 return;
             }
 
-            var points = new Vector3[pointCount];
+            var points = new JVector[pointCount];
             for (int i = 0; i < pointCount; i++)
             {
                 RcVec3f point = straightPath[i].pos;
-                points[i] = new Vector3(point.X, point.Y, point.Z);
+                points[i] = FromRc(point);
             }
 
             bool partial = pathStatus.IsPartial();
@@ -484,7 +490,7 @@ namespace CustomNavigation.Runtime
             bool partial,
             bool wasCanceled,
             string message,
-            Vector3[] points)
+            JVector[] points)
         {
             ActiveQuery query = active[activeIndex];
             active.RemoveAt(activeIndex);
@@ -535,7 +541,7 @@ namespace CustomNavigation.Runtime
             bool partial,
             bool wasCanceled,
             string message,
-            Vector3[] points = null,
+            JVector[] points = null,
             int iterations = 0)
         {
             completedQueries++;
@@ -609,9 +615,14 @@ namespace CustomNavigation.Runtime
                 costs);
         }
 
-        private static RcVec3f ToRc(Vector3 value)
+        private static RcVec3f ToRc(JVector value)
         {
-            return new RcVec3f(value.x, value.y, value.z);
+            return new RcVec3f(value.X, value.Y, value.Z);
+        }
+
+        private static JVector FromRc(RcVec3f value)
+        {
+            return new JVector(value.X, value.Y, value.Z);
         }
 
         private void EnsureOwnerThread()
@@ -643,8 +654,8 @@ namespace CustomNavigation.Runtime
             public readonly long RequestId;
             public readonly long Sequence;
             public readonly NavigationQueryPriority Priority;
-            public readonly Vector3 Start;
-            public readonly Vector3 Destination;
+            public readonly JVector Start;
+            public readonly JVector Destination;
             public readonly double CreatedAtSeconds;
             public readonly Action<NavigationPathResult> Completion;
 
@@ -652,8 +663,8 @@ namespace CustomNavigation.Runtime
                 long requestId,
                 long sequence,
                 NavigationQueryPriority priority,
-                Vector3 start,
-                Vector3 destination,
+                JVector start,
+                JVector destination,
                 double createdAtSeconds,
                 Action<NavigationPathResult> completion)
             {
@@ -671,8 +682,8 @@ namespace CustomNavigation.Runtime
         {
             public readonly PendingQuery Request;
             public readonly QueryWorkspace Workspace;
-            public readonly RcVec3f NearestStart;
-            public readonly RcVec3f NearestEnd;
+            public readonly JVector NearestStart;
+            public readonly JVector NearestEnd;
             public int Iterations;
 
             public DtNavMeshQuery Query => Workspace.Query;
@@ -685,8 +696,8 @@ namespace CustomNavigation.Runtime
             {
                 Request = request;
                 Workspace = workspace;
-                NearestStart = nearestStart;
-                NearestEnd = nearestEnd;
+                NearestStart = FromRc(nearestStart);
+                NearestEnd = FromRc(nearestEnd);
             }
         }
 

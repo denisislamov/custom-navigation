@@ -1,11 +1,8 @@
 {
-  "name": "CustomNavigation.Client",
-  "rootNamespace": "CustomNavigation.Runtime",
+  "name": "CustomNavigation.UnityAdapter",
+  "rootNamespace": "CustomNavigation.UnityAdapter",
   "references": [
-    "CustomNavigation.Authoring",
-    "CustomNavigation.Runtime",
-    "CustomNavigation.UnityAdapter",
-    "Unity.InputSystem"
+    "CustomNavigation.Runtime"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

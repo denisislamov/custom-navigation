@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using Jitter2.LinearMath;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -268,8 +269,8 @@ namespace CustomNavigation.Editor.Tests
             }
         }
 
-        private static readonly Vector3 Start = new Vector3(-5f, 0f, -5f);
-        private static readonly Vector3 End = new Vector3(5f, 0f, 5f);
+        private static readonly JVector Start = new JVector(-5f, 0f, -5f);
+        private static readonly JVector End = new JVector(5f, 0f, 5f);
 
         private static NavigationPerformanceProfile CreateProfile(
             int queued = 16,

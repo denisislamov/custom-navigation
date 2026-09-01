@@ -4,15 +4,21 @@
   "references": [
     "CustomNavigation.NavigationEditor",
     "CustomNavigation.Authoring",
-    "CustomNavigation.Runtime"
+    "CustomNavigation.Runtime",
+    "CustomNavigation.UnityAdapter"
   ],
   "includePlatforms": [
     "Editor"
   ],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
-  "overrideReferences": false,
-  "precompiledReferences": [],
+  "overrideReferences": true,
+  "precompiledReferences": [
+    "DotRecast.Core.dll",
+    "DotRecast.Detour.dll",
+    "DotRecast.Recast.dll",
+    "Jitter2.Core.dll"
+  ],
   "autoReferenced": false,
   "defineConstraints": [
     "UNITY_INCLUDE_TESTS"

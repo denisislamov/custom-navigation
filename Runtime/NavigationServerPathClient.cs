@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Text;
+using Jitter2.LinearMath;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -26,7 +27,7 @@ namespace CustomNavigation.Runtime
     public sealed class NavigationServerPathResult
     {
         public bool Success;
-        public Vector3[] Points = Array.Empty<Vector3>();
+        public JVector[] Points = Array.Empty<JVector>();
         public string Message = string.Empty;
         public string ArtifactHash = string.Empty;
         public string PathFingerprint = string.Empty;
@@ -43,8 +44,8 @@ namespace CustomNavigation.Runtime
         public static IEnumerator RequestPath(
             string baseUrl,
             string requestId,
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             string clientArtifactHash,
             string clientPathFingerprint,
             Action<NavigationServerPathResult> completion)
@@ -69,8 +70,8 @@ namespace CustomNavigation.Runtime
             string baseUrl,
             string requestId,
             string levelId,
-            Vector3 start,
-            Vector3 destination,
+            JVector start,
+            JVector destination,
             string clientArtifactHash,
             string clientPathFingerprint,
             Action<NavigationServerPathResult> completion)
@@ -80,8 +81,8 @@ namespace CustomNavigation.Runtime
             {
                 requestId = requestId,
                 levelId = levelId ?? string.Empty,
-                start = ServerVector3.FromUnity(start),
-                destination = ServerVector3.FromUnity(destination),
+                start = ServerVector3.FromJitter(start),
+                destination = ServerVector3.FromJitter(destination),
                 clientArtifactHash = clientArtifactHash ?? string.Empty,
                 clientPathFingerprint = clientPathFingerprint ?? string.Empty
             };
@@ -125,10 +126,10 @@ namespace CustomNavigation.Runtime
                 yield break;
             }
 
-            var points = new Vector3[response.points.Length];
+            var points = new JVector[response.points.Length];
             for (int i = 0; i < response.points.Length; i++)
             {
-                points[i] = response.points[i].ToUnity();
+                points[i] = response.points[i].ToJitter();
             }
 
             result.Success = true;
@@ -182,14 +183,17 @@ namespace CustomNavigation.Runtime
             public float y;
             public float z;
 
-            public static ServerVector3 FromUnity(Vector3 value)
+            public static ServerVector3 FromJitter(JVector value)
             {
-                return new ServerVector3 { x = value.x, y = value.y, z = value.z };
+                NavigationJitterValidation.RequireFinite(value, nameof(value));
+                return new ServerVector3 { x = value.X, y = value.Y, z = value.Z };
             }
 
-            public Vector3 ToUnity()
+            public JVector ToJitter()
             {
-                return new Vector3(x, y, z);
+                return NavigationJitterValidation.RequireFinite(
+                    new JVector(x, y, z),
+                    "serverResponsePoint");
             }
         }
     }
