@@ -1,6 +1,3 @@
-using System.Globalization;
-using System.Security.Cryptography;
-using System.Text;
 using CustomNavigation.Runtime;
 using DotRecast.Core.Numerics;
 using DotRecast.Detour;
@@ -177,32 +174,5 @@ public sealed class ServerNavigation
     private static string FormatPoint(JVector point)
     {
         return FormattableString.Invariant($"({point.X:F3}, {point.Y:F3}, {point.Z:F3})");
-    }
-}
-
-public static class NavigationPathFingerprint
-{
-    public static string Compute(IReadOnlyList<JVector> points)
-    {
-        var canonical = new StringBuilder(points.Count * 32);
-        for (int i = 0; i < points.Count; i++)
-        {
-            JVector point = points[i];
-            canonical.Append(Quantize(point.X).ToString(CultureInfo.InvariantCulture));
-            canonical.Append(',');
-            canonical.Append(Quantize(point.Y).ToString(CultureInfo.InvariantCulture));
-            canonical.Append(',');
-            canonical.Append(Quantize(point.Z).ToString(CultureInfo.InvariantCulture));
-            canonical.Append(';');
-        }
-
-        byte[] bytes = Encoding.UTF8.GetBytes(canonical.ToString());
-        byte[] hash = SHA256.HashData(bytes);
-        return Convert.ToHexString(hash).ToLowerInvariant();
-    }
-
-    private static long Quantize(float value)
-    {
-        return (long)Math.Round(value * 1000d, MidpointRounding.AwayFromZero);
     }
 }

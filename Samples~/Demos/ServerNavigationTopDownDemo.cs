@@ -376,7 +376,7 @@ namespace CustomNavigation
 
         private static bool TryIntersectGround(Ray ray, out Vector3 point)
         {
-            if (Mathf.Abs(ray.direction.y) < 0.0001f)
+            if (StableMath.Abs(ray.direction.y) < 0.0001f)
             {
                 point = default;
                 return false;

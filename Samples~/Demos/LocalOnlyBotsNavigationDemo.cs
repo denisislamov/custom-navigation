@@ -422,8 +422,8 @@ namespace CustomNavigation.Runtime
 
         private bool IsInsideArena(Vector3 point)
         {
-            return Mathf.Abs(point.x) <= worldSize.x * 0.5f
-                   && Mathf.Abs(point.z) <= worldSize.y * 0.5f;
+            return StableMath.Abs(point.x) <= worldSize.x * 0.5f
+                   && StableMath.Abs(point.z) <= worldSize.y * 0.5f;
         }
 
         private Material CreateMaterial(Color color)
@@ -451,7 +451,7 @@ namespace CustomNavigation.Runtime
 
         private static bool TryIntersectHeight(Ray ray, float height, out Vector3 point)
         {
-            if (Mathf.Abs(ray.direction.y) < 0.0001f)
+            if (StableMath.Abs(ray.direction.y) < 0.0001f)
             {
                 point = default;
                 return false;

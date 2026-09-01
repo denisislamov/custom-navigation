@@ -15,6 +15,7 @@
     <Compile Include="../Runtime/CanonicalJitterContract.cs" Link="Shared/CanonicalJitterContract.cs" />
     <Compile Include="../Runtime/NavigationJitterValidation.cs" Link="Shared/NavigationJitterValidation.cs" />
     <Compile Include="../Runtime/NavigationDotRecastAdapter.cs" Link="Shared/NavigationDotRecastAdapter.cs" />
+    <Compile Include="../Runtime/NavigationPathFingerprint.cs" Link="Shared/NavigationPathFingerprint.cs" />
     <Compile Include="../Runtime/NavigationWireProtocol.cs" Link="Shared/NavigationWireProtocol.cs" />
     <Compile Include="../Runtime/NavigationWireCodec.cs" Link="Shared/NavigationWireCodec.cs" />
     <Reference Include="DotRecast.Core">

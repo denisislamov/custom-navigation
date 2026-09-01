@@ -948,8 +948,8 @@ namespace CustomNavigation.Editor
                 agent.Height,
                 agent.Radius,
                 agent.MaximumClimb,
-                Mathf.Max(1, Mathf.RoundToInt(settings.MinimumRegionArea)),
-                Mathf.Max(1, Mathf.RoundToInt(settings.MergedRegionArea)),
+                Math.Max(1, checked((int)StableMath.RoundToInt64AwayFromZero(settings.MinimumRegionArea))),
+                Math.Max(1, checked((int)StableMath.RoundToInt64AwayFromZero(settings.MergedRegionArea))),
                 settings.MaximumEdgeLength,
                 settings.MaximumEdgeError,
                 settings.MaximumVerticesPerPolygon,
@@ -1286,7 +1286,7 @@ namespace CustomNavigation.Editor
                 throw new InvalidOperationException("Navigation geometry contains a non-finite coordinate.");
             }
 
-            return Mathf.Round(value * 10000f) * 0.0001f;
+            return StableMath.QuantizeToInt64(value, 10000f) * 0.0001f;
         }
 
         private static Vector3 CanonicalUnityVector(Vector3 value)

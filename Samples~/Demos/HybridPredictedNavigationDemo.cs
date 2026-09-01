@@ -404,7 +404,7 @@ namespace CustomNavigation.Runtime
 
         private static bool TryIntersectHeight(Ray ray, float height, out Vector3 point)
         {
-            if (Mathf.Abs(ray.direction.y) < 0.0001f)
+            if (StableMath.Abs(ray.direction.y) < 0.0001f)
             {
                 point = default;
                 return false;

@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NuGetAudit>false</NuGetAudit>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <UseAppHost>false</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="NavigationPathFingerprintProgram.cs" />
+    <Compile Include="../../Runtime/NavigationJitterValidation.cs" Link="Shared/NavigationJitterValidation.cs" />
+    <Compile Include="../../Runtime/NavigationPathFingerprint.cs" Link="Shared/NavigationPathFingerprint.cs" />
+    <Compile Include="../../Tests/Shared/NavigationPathFingerprintFixtures.cs" Link="Shared/NavigationPathFingerprintFixtures.cs" />
+    <Reference Include="Jitter2.Core">
+      <HintPath>$(CanonicalJitterRoot)/Jitter2.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>$(CanonicalJitterRoot)/System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+  <Target Name="RequireCanonicalJitter" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(CanonicalJitterRoot)' == ''" Text="CanonicalJitterRoot is required." />
+  </Target>
+</Project>

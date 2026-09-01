@@ -225,8 +225,8 @@ namespace CustomNavigation.Runtime
             {
                 JVector point = result.Points[i];
                 path.Add(point);
-                routeMinimumHeight = Mathf.Min(routeMinimumHeight, point.Y);
-                routeMaximumHeight = Mathf.Max(routeMaximumHeight, point.Y);
+                routeMinimumHeight = StableMath.Min(routeMinimumHeight, point.Y);
+                routeMaximumHeight = StableMath.Max(routeMaximumHeight, point.Y);
             }
 
             waypointIndex = path.Count > 1 ? 1 : 0;
@@ -330,7 +330,7 @@ namespace CustomNavigation.Runtime
             Vector3 edgeB = third - first;
             Vector3 cross = Vector3.Cross(ray.direction, edgeB);
             float determinant = Vector3.Dot(edgeA, cross);
-            if (Mathf.Abs(determinant) < epsilon)
+            if (StableMath.Abs(determinant) < epsilon)
             {
                 distance = 0f;
                 return false;
