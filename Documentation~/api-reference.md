@@ -1,6 +1,6 @@
 # API Reference
 
-Версия документа: **Custom Navigation 0.6.16**.
+Версия документа: **Custom Navigation 0.7.0**.
 
 Здесь перечислены Runtime API, центральные authoring types и поддерживаемые Editor
 facade для внешних инструментов. Serialized-only components и все Inspector fields
@@ -12,6 +12,23 @@ facade для внешних инструментов. Serialized-only component
 
 Namespace: `CustomNavigation.Runtime`. Assembly definition:
 `Runtime/CustomNavigation.Runtime.asmdef`.
+
+Canonical coordinates are `Jitter2.LinearMath.JVector`. The approved release is compiled with
+`Real = System.Single`; f64 is rejected by preflight and must not be narrowed at a Unity or
+DotRecast boundary.
+
+## Assembly `CustomNavigation.UnityAdapter`
+
+```csharp
+public static class NavigationUnityAdapter
+{
+    public static Jitter2.LinearMath.JVector ToJitter(UnityEngine.Vector3 value);
+    public static UnityEngine.Vector3 ToUnity(Jitter2.LinearMath.JVector value);
+}
+```
+
+Это единственная package-owned presentation boundary. Runtime/server state и path arrays остаются
+`JVector`; `Vector3` создаётся только рядом с Transform, Gizmos, Handles или UI.
 
 ### `NavigationArtifactInstance`
 
@@ -40,7 +57,7 @@ Instance создаёт loader. `NavMesh` и `CreateQuery` — advanced DotRecas
 ```csharp
 public static class NavigationArtifactLoader
 {
-    public const string SupportedSchemaVersion = "1";
+    public const string SupportedSchemaVersion = "2";
     public const string SupportedDotRecastVersion = "2026.1.3";
 
     public static NavigationArtifactInstance Load(
@@ -57,12 +74,32 @@ public static class NavigationArtifactLoader
 }
 ```
 
-- `Load` дополнительно проверяет schema и DotRecast version из asset.
+- `Load` до чтения payload проверяет schema, DotRecast, f32, canonical Jitter SHA-256,
+  StableMath compatibility и fingerprint v2 из asset.
 - `LoadBytes` этих параметров не получает; caller проверяет их до вызова.
 - `expectedPolygonCount <= 0` отключает сравнение metadata count, но binary всё равно должен
   содержать хотя бы один полигон.
 - Возможны `ArgumentNullException`, `InvalidOperationException`, `InvalidDataException` и
   исключения DotRecast reader.
+
+### `NavigationCompatibilityContract`
+
+```csharp
+public static class NavigationCompatibilityContract
+{
+    public const string ArtifactSchemaVersion = "2";
+    public const string DotRecastVersion = "2026.1.3";
+    public const string Precision = "f32";
+    public const string CanonicalJitterAssemblySha256 =
+        "944666bbe73dfce5ffc5bfb18569fb0004f50e767dcbb8b471dde15242023ca6";
+    public const string DeterministicMathCompatibilityId =
+        "54b456c04074909605d2ba138e5001d39a90a338885eafcb32265483b35054b0";
+    public const int FingerprintAlgorithmVersion = 2;
+}
+```
+
+Runtime, manifest writer, editor exporter, server store and wire codec используют один owner.
+Mismatch бросает `NavigationCompatibilityException` с точным `NavigationCompatibilityField`.
 
 ### `NavigationPathHandle`
 
@@ -91,7 +128,7 @@ public sealed class NavigationPathResult
     public bool IsPartial { get; }
     public bool IsCanceled { get; }
     public string Message { get; }
-    public UnityEngine.Vector3[] Points { get; }
+    public Jitter2.LinearMath.JVector[] Points { get; }
     public int Iterations { get; }
     public double LatencyMilliseconds { get; }
 }
@@ -136,12 +173,12 @@ public sealed class NavigationQueryScheduler
         CustomNavigation.Authoring.NavigationAgentProfile agentProfile);
 
     public bool TryProjectPosition(
-        UnityEngine.Vector3 position,
-        out UnityEngine.Vector3 projectedPosition);
+        Jitter2.LinearMath.JVector position,
+        out Jitter2.LinearMath.JVector projectedPosition);
 
     public NavigationPathHandle RequestPath(
-        UnityEngine.Vector3 start,
-        UnityEngine.Vector3 destination,
+        Jitter2.LinearMath.JVector start,
+        Jitter2.LinearMath.JVector destination,
         CustomNavigation.Authoring.NavigationQueryPriority priority,
         System.Action<NavigationPathResult> completion);
 
@@ -176,14 +213,14 @@ public sealed class NavigationQuerySchedulerBehaviour : UnityEngine.MonoBehaviou
         CustomNavigation.Authoring.NavigationAgentProfile navigationAgent);
 
     public NavigationPathHandle RequestPath(
-        UnityEngine.Vector3 start,
-        UnityEngine.Vector3 destination,
+        Jitter2.LinearMath.JVector start,
+        Jitter2.LinearMath.JVector destination,
         CustomNavigation.Authoring.NavigationQueryPriority priority,
         System.Action<NavigationPathResult> completion);
 
     public bool TryProjectPosition(
-        UnityEngine.Vector3 position,
-        out UnityEngine.Vector3 projectedPosition);
+        Jitter2.LinearMath.JVector position,
+        out Jitter2.LinearMath.JVector projectedPosition);
 }
 ```
 
@@ -198,8 +235,11 @@ public sealed class NavigationQuerySchedulerBehaviour : UnityEngine.MonoBehaviou
 ```csharp
 public static class NavigationPathFingerprint
 {
+    public const int AlgorithmVersion = 2;
+    public const string AlgorithmId =
+        "cn-path-fingerprint-v2-mm-away-from-zero-stablemath-f32";
     public static string Compute(
-        System.Collections.Generic.IReadOnlyList<UnityEngine.Vector3> points);
+        System.Collections.Generic.IReadOnlyList<Jitter2.LinearMath.JVector> points);
 }
 ```
 
@@ -229,7 +269,7 @@ public enum NavigationComputeMode
 public sealed class NavigationServerPathResult
 {
     public bool Success;
-    public UnityEngine.Vector3[] Points;
+    public Jitter2.LinearMath.JVector[] Points;
     public string Message;
     public string ArtifactHash;
     public string PathFingerprint;
@@ -249,8 +289,8 @@ public static class NavigationServerPathClient
     public static System.Collections.IEnumerator RequestPath(
         string baseUrl,
         string requestId,
-        UnityEngine.Vector3 start,
-        UnityEngine.Vector3 destination,
+        Jitter2.LinearMath.JVector start,
+        Jitter2.LinearMath.JVector destination,
         string clientArtifactHash,
         string clientPathFingerprint,
         System.Action<NavigationServerPathResult> completion);
@@ -259,8 +299,8 @@ public static class NavigationServerPathClient
         string baseUrl,
         string requestId,
         string levelId,
-        UnityEngine.Vector3 start,
-        UnityEngine.Vector3 destination,
+        Jitter2.LinearMath.JVector start,
+        Jitter2.LinearMath.JVector destination,
         string clientArtifactHash,
         string clientPathFingerprint,
         System.Action<NavigationServerPathResult> completion);
@@ -443,6 +483,11 @@ public sealed class NavigationArtifactAsset : UnityEngine.ScriptableObject
     public string ArtifactHash { get; }
     public string SchemaVersion { get; }
     public string DotRecastVersion { get; }
+    public string Precision { get; }
+    public string CanonicalJitterAssemblySha256 { get; }
+    public string DeterministicMathCompatibilityId { get; }
+    public int FingerprintAlgorithmVersion { get; }
+    public string FingerprintAlgorithmId { get; }
     public string AgentProfileId { get; }
     public int PolygonCount { get; }
     public int SourceMeshCount { get; }
@@ -454,6 +499,11 @@ public sealed class NavigationArtifactAsset : UnityEngine.ScriptableObject
         string newArtifactHash,
         string newSchemaVersion,
         string newDotRecastVersion,
+        string newPrecision,
+        string newCanonicalJitterAssemblySha256,
+        string newDeterministicMathCompatibilityId,
+        int newFingerprintAlgorithmVersion,
+        string newFingerprintAlgorithmId,
         string newAgentProfileId,
         int newPolygonCount,
         int newSourceMeshCount,
@@ -713,9 +763,9 @@ API сохранён для совместимости; для новых adapte
 
 - public namespace, assembly и signature;
 - serialized field names и enum ordinals;
-- artifact schema `1` и exact DotRecast version;
-- HTTP `/path` field names;
-- fingerprint algorithm;
+- artifact schema `2`, exact DotRecast version и compatibility identity fields;
+- strict HTTP `/path` protocol-v2 field names and writer order;
+- fingerprint algorithm version/id;
 - callback и owner-thread semantics.
 
 Дополнительные архитектурные варианты описаны в [Extending](extending.md).

@@ -1,7 +1,7 @@
 # Editor Guide
 
 Этот документ описывает фактический Editor UX пакета DataSakura Custom Navigation
-0.6.16. Названия меню, вкладок, кнопок и полей приведены так, как они отображаются в
+0.7.0. Названия меню, вкладок, кнопок и полей приведены так, как они отображаются в
 Unity 6. Пакет не использует встроенный Unity NavMesh и не требует Unity Physics для
 authoring или bake.
 
@@ -268,7 +268,7 @@ Add Component paths:
 
 ## Sample: границы и побочные эффекты
 
-Package Manager объявляет sample `Navigation Demos & Bots`, но в 0.6.16 исходный
+Package Manager объявляет sample `Navigation Demos & Bots`, но в 0.7.0 исходный
 `Samples~/Demos` содержит код и `.asmdef`, а не готовые `.unity` scenes, prefabs,
 materials или собственный README.
 

@@ -1,6 +1,6 @@
 # Recipes
 
-Каждый рецепт использует публичный API 0.6.16. Если код находится в собственной
+Каждый рецепт использует публичный API 0.7.0. Если код находится в собственной
 `.asmdef`, добавьте references из [Integration](integration.md).
 
 ## 1. Запросить путь и отменить его вместе с объектом
@@ -8,6 +8,7 @@
 ```csharp
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
 using UnityEngine;
 
 public sealed class BotPathRequester : MonoBehaviour
@@ -21,8 +22,8 @@ public sealed class BotPathRequester : MonoBehaviour
     {
         pending.Cancel();
         pending = navigation.RequestPath(
-            transform.position,
-            destination.position,
+            NavigationUnityAdapter.ToJitter(transform.position),
+            NavigationUnityAdapter.ToJitter(destination.position),
             NavigationQueryPriority.VisibleBot,
             OnCompleted);
     }
@@ -59,6 +60,8 @@ public sealed class BotPathRequester : MonoBehaviour
 ```csharp
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public static class NavigationTargeting
@@ -70,14 +73,16 @@ public static class NavigationTargeting
         System.Action<NavigationPathResult> completion,
         out NavigationPathHandle handle)
     {
-        if (!navigation.TryProjectPosition(rawDestination, out Vector3 projected))
+        if (!navigation.TryProjectPosition(
+                NavigationUnityAdapter.ToJitter(rawDestination),
+                out JVector projected))
         {
             handle = default;
             return false;
         }
 
         handle = navigation.RequestPath(
-            start,
+            NavigationUnityAdapter.ToJitter(start),
             projected,
             NavigationQueryPriority.PlayerImmediate,
             completion);
@@ -137,20 +142,22 @@ owner thread, на котором создан scheduler.
 ```csharp
 using System.Collections;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class ServerPathRequester : MonoBehaviour
 {
-    public IEnumerator Request(Vector3 start, Vector3 destination)
+    public IEnumerator Request(Vector3 start, Vector3 destination, string artifactHash)
     {
         bool callbackReceived = false;
         yield return NavigationServerPathClient.RequestPath(
             NavigationServerRuntimeSettings.CurrentUrl,
             System.Guid.NewGuid().ToString("N"),
             "arena_01",
-            start,
-            destination,
-            string.Empty,
+            NavigationUnityAdapter.ToJitter(start),
+            NavigationUnityAdapter.ToJitter(destination),
+            artifactHash,
             string.Empty,
             result =>
             {
@@ -166,8 +173,9 @@ public sealed class ServerPathRequester : MonoBehaviour
 }
 ```
 
-Запускайте через `StartCoroutine(Request(start, destination))`. В production передавайте
-реальный client artifact hash и local path fingerprint, если сравниваете prediction.
+Запускайте через `StartCoroutine(Request(start, destination, artifact.ArtifactHash))`.
+Client artifact hash обязателен и fail-closed; local path fingerprint может быть пустым, если
+prediction не сравнивается.
 
 **Проверяемый результат:** request уходит на `POST /path` с `levelId = arena_01`.
 

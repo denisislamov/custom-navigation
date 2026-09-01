@@ -1,7 +1,73 @@
 # Обновление, миграция и откат
 
 Эта процедура сохраняет project-owned сцены, profiles, Unity GUID и навигационные
-артефакты при переходе на DataSakura Custom Navigation `0.6.16`.
+project-owned данные при переходе на DataSakura Custom Navigation `0.7.0`. Навигационные
+артефакты schema 1 намеренно не сохраняются как исполняемые: после backup их нужно re-bake.
+
+## Breaking migration 0.6.x → 0.7.0
+
+### 1. Сначала установите canonical Jitter отдельно
+
+До обновления Custom Navigation установите approved f32 release
+`jitter-v2.8.9-datasakura.1-rc.1` из Jitter Physics Baker repository. Требуются exact package
+commit `508de73d6d82088d58a74fd41d7e09b70f009b1d` и `Jitter2.Core.dll` SHA-256
+`944666bbe73dfce5ffc5bfb18569fb0004f50e767dcbb8b471dde15242023ca6`.
+
+Jitter остаётся project-owned prerequisite. Не добавляйте Jitter Physics Baker как runtime
+provider, не копируйте Jitter внутрь Custom Navigation и не оставляйте две DLL.
+
+### 2. Обновите compile-time coordinate API
+
+До 0.7.0:
+
+```csharp
+Vector3 start = transform.position;
+Vector3[] path = result.Points;
+navigation.RequestPath(start, destination, priority, completion);
+```
+
+В 0.7.0:
+
+```csharp
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
+
+JVector start = NavigationUnityAdapter.ToJitter(transform.position);
+JVector destination = NavigationUnityAdapter.ToJitter(destinationTransform.position);
+navigation.RequestPath(start, destination, priority, result =>
+{
+    JVector[] path = result.Points;
+    transform.position = NavigationUnityAdapter.ToUnity(path[0]);
+});
+```
+
+Храните route, correction и authoritative coordinates как `JVector`. Вызывайте
+`NavigationUnityAdapter` только рядом с `Transform`, Gizmos, Handles или другим Unity
+presentation API. `Real` в approved profile является CLR `System.Single`; f64 profile отклоняется
+до narrowing.
+
+### 3. Удалите private coordinate DTO
+
+Удалите consumer-owned `Vector3Dto`, `ServerVector3`, reflection/`JsonUtility` path envelopes и
+ручные `x/y/z` conversion helpers. Используйте `NavigationServerPathClient` либо shared
+`NavigationWireCodec`; in-memory request/response coordinates имеют тип `JVector`, а canonical
+wire shape остаётся `{ "x", "y", "z" }`.
+
+### 4. Re-bake и re-export обязателен
+
+Schema 2 добавляет `precision`, canonical Jitter SHA-256, StableMath compatibility id и
+fingerprint algorithm v2. Schema 1 не получает default values и не обновляется in-place.
+
+1. Сохраните старые payload/manifest только как rollback evidence.
+2. Откройте каждую source scene в 0.7.0 и выполните `Validate` → `Build for Client`.
+3. Проверьте новый manifest: `schemaVersion = 2`, `precision = f32`, fingerprint version `2`.
+4. Выполните `Upload to Server` или `Export to Folder` заново.
+5. Перезапустите/проверьте server health и сделайте positive query с exact artifact hash.
+6. Отдельно проверьте negative wrong-hash request: он должен завершиться до DotRecast route work.
+
+Смена manifest identity не переписывает уже сериализованный DotRecast payload, но P06 изменил
+deterministic authoring rounding. Поэтому новый bake может законно получить другие payload bytes и
+SHA-256; не переносите старый hash в новый manifest.
 
 ## Перед обновлением
 
@@ -28,7 +94,7 @@
 Замените tag в `Packages/manifest.json`:
 
 ```json
-"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git#v0.6.16"
+"com.datasakura.custom-navigation": "https://github.com/denisislamov/custom-navigation.git#v0.7.0"
 ```
 
 Вернитесь в Unity и дождитесь окончания resolve/import/compile. Unity сам обновит
@@ -77,7 +143,7 @@ GUID папок и дочерних assets сохраняются. Повтор�
 
 ## Имена generated artifacts
 
-Legacy build мог использовать hash-based имена `*.navmesh.bytes`. Версия `0.6.16`
+Legacy build мог использовать hash-based имена `*.navmesh.bytes`. Версия `0.7.0`
 использует стабильную тройку в том же generated root:
 
 ```text
@@ -86,8 +152,9 @@ Legacy build мог использовать hash-based имена `*.navmesh.by
 <levelId>.navigation.asset
 ```
 
-Текущий reader продолжает загружать и экспортировать legacy artifacts, поэтому не
-переименовывайте их вручную. Для явной миграции:
+Текущий filename layer распознаёт legacy имена только для GUID-safe перемещения. Schema-1
+payload не становится совместимым от переименования и не загружается runtime/server. Для явной
+миграции имён schema-2 artifact:
 
 1. Сделайте backup `Assets/DataSakura/CustomNavigation/Generated/Navigation`.
 2. Откройте `Tools > DataSakura > Custom Navigation Window` → `Diagnostics`.
@@ -119,7 +186,7 @@ Assets/Samples/DataSakura Custom Navigation/<version>/Navigation Demos & Bots
 
 1. Сохраните свои правки старого sample отдельно.
 2. Убедитесь, что установлен `com.unity.inputsystem`.
-3. В Package Manager откройте версию `0.6.16` и снова импортируйте
+3. В Package Manager откройте версию `0.7.0` и снова импортируйте
    `Navigation Demos & Bots`.
 4. Перенесите только осознанные пользовательские изменения в новую копию или, лучше,
    в собственную project assembly.

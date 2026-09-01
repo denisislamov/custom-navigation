@@ -1,6 +1,6 @@
 # DataSakura Custom Navigation
 
-DataSakura Custom Navigation `0.6.16` — physics-free навигация для Unity 6 на базе
+DataSakura Custom Navigation `0.7.0` — physics-free навигация для Unity 6 на базе
 DotRecast. Пакет запекает navmesh в Editor, сохраняет один детерминированный бинарный
 артефакт для клиента и сервера и выполняет локальные запросы в пределах кадрового
 бюджета. Unity Physics и встроенный Unity NavMesh не используются.
@@ -21,6 +21,8 @@ DotRecast. Пакет запекает navmesh в Editor, сохраняет о�
 ## Требования
 
 - Unity `6000.3` или новее;
+- отдельно установлен canonical Jitter `jitter-v2.8.9-datasakura.1-rc.1` (f32), до
+  установки Custom Navigation; пакет не включает Jitter и не объявляет automatic dependency;
 - для основного пакета дополнительные Unity packages не нужны: managed-сборки
   DotRecast уже включены;
 - sample `Navigation Demos & Bots` требует `com.unity.inputsystem`;
@@ -33,7 +35,7 @@ DotRecast. Пакет запекает navmesh в Editor, сохраняет о�
 `Add package from git URL...`:
 
 ```text
-https://github.com/denisislamov/custom-navigation.git#v0.6.16
+https://github.com/denisislamov/custom-navigation.git#v0.7.0
 ```
 
 После импорта откройте единственную основную точку входа:
@@ -67,7 +69,7 @@ Git URL, `Packages/manifest.json`, local disk, embedded package, удалени�
 sample в:
 
 ```text
-Assets/Samples/DataSakura Custom Navigation/0.6.16/Navigation Demos & Bots
+Assets/Samples/DataSakura Custom Navigation/0.7.0/Navigation Demos & Bots
 ```
 
 Sample содержит runtime-компоненты и Editor builders для local, server, hybrid и

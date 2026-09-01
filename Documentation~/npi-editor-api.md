@@ -60,8 +60,9 @@ Scene View Overlay и Preferences; отдельного набора toggles н�
 старых consumers. Для новых integrations предпочитайте `NavigationEditorApi`, потому
 что он поддерживает explicit identity ownership и verified delivery summary.
 
-API впервые опубликован в 0.6.14 и входит в 0.6.16 без изменения signatures. Release
-0.6.16 не добавляет dependency на NPI и не меняет server wire contract.
+API впервые опубликован в 0.6.14 и входит в 0.7.0 без изменения signatures. Release
+0.7.0 не добавляет dependency на NPI; runtime/server coordinate и wire contracts при этом
+намеренно мигрированы на canonical Jitter protocol v2.
 
 Полный справочник: [API reference](api-reference.md). Практический пример:
 [Recipes](recipes.md#6-проверить-и-запечь-карту-из-внешнего-editor-tool).

@@ -1,4 +1,4 @@
-# DataSakura Custom Navigation 0.6.16
+# DataSakura Custom Navigation 0.7.0
 
 DataSakura Custom Navigation — UPM-пакет для physics-free навигации в Unity 6. Он
 запекает геометрию сцены в Editor, сохраняет один детерминированный Detour-артефакт
@@ -11,7 +11,7 @@ DataSakura Custom Navigation — UPM-пакет для physics-free навига
 
 ## Начните здесь
 
-1. [Установите пакет](installation.md).
+1. [Установите canonical Jitter prerequisite, затем пакет](installation.md).
 2. Пройдите [Quick Start](quick-start.md) — от пустой сохранённой сцены до локального
    запроса пути.
 3. Изучите [Editor Guide](editor-guide.md), если уровень готовит дизайнер.
@@ -65,9 +65,10 @@ bake. Это позволяет сравнивать клиент и серве�
 
 ## Требования и подтверждённая совместимость
 
-| Область | Статус версии 0.6.16 |
+| Область | Статус версии 0.7.0 |
 | --- | --- |
-| Unity | Минимум из `package.json`: `6000.3`; release-проверка: `6000.3.19f1` |
+| Unity | Минимум из `package.json`: `6000.3`; migration source-regression: `6000.3.11f1` |
+| Canonical Jitter | Отдельный approved f32 release; package не содержит и не устанавливает Jitter автоматически |
 | Render Pipeline | Core не обращается к API Built-in/URP/HDRP; демонстрационный development-проект использует URP |
 | Локальный runtime | Managed DotRecast Core + Detour; без native plugin и `unsafe` |
 | Editor bake | Editor assembly + DotRecast Recast; в Player не включается |

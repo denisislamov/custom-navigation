@@ -34,7 +34,8 @@ Assets/DataSakura/CustomNavigation/Generated/Navigation
 navmesh прямо на адрес из `NavigationServerSettings`. Работает, когда сервер на другой
 машине или в контейнере — общая файловая система не нужна. Сервер проверяет schema,
 версию DotRecast, SHA-256 и число полигонов **до** записи, поэтому битая выгрузка не
-может оставить полуживую карту. Имя файла берётся из манифеста и принимается, только
+может оставить полуживую карту. Schema 2 также проверяет f32, canonical Jitter SHA-256,
+StableMath compatibility и fingerprint v2. Имя файла берётся из манифеста и принимается, только
 если это простое `<level>.navigation.bytes` или legacy `<level>.<hash>.navmesh.bytes` —
 выйти за пределы папки данных нельзя.
 
@@ -96,9 +97,11 @@ version, SHA-256 artifact и число полигонов.
 
 ### Из терминала
 
-После `Install navigation server` выполните из корня Unity-проекта:
+После `Install navigation server` укажите root отдельно извлечённого approved Jitter release и
+выполните из корня Unity-проекта:
 
 ```bash
+export CUSTOM_NAVIGATION_JITTER_ROOT=/absolute/path/DataSakura.Jitter2.Core-2.8.9-datasakura.1-rc.1
 ./NavigationServer/run-server.sh
 ```
 
@@ -129,6 +132,7 @@ version, SHA-256 artifact и число полигонов.
 ## API
 
 - `GET /health` — status, версия DotRecast, `levelId`, описание уровня, artifact hash,
+  schema, f32, canonical Jitter SHA-256, StableMath id и fingerprint version,
   число полигонов, папка данных и список доступных уровней (`availableLevels`).
   Можно спросить про конкретную карту: `GET /health?level=<levelId>`.
 - `GET /artifacts` — все карты в папке данных с их состоянием.
@@ -143,6 +147,12 @@ version, SHA-256 artifact и число полигонов.
 curl -X POST http://127.0.0.1:5079/path \
   -H 'Content-Type: application/json' \
   -d '{
+    "protocolVersion":2,
+    "runtimeCompatibilityId":"cn-jmp-v2-f32-jitter-944666bb-math-54b456c0-fingerprint-v2",
+    "precision":"f32",
+    "canonicalJitterAssemblySha256":"944666bbe73dfce5ffc5bfb18569fb0004f50e767dcbb8b471dde15242023ca6",
+    "deterministicMathCompatibilityId":"54b456c04074909605d2ba138e5001d39a90a338885eafcb32265483b35054b0",
+    "fingerprintAlgorithmVersion":2,
     "requestId":"manual-1",
     "levelId":"local_bots_arena",
     "start":{"x":-11,"y":0,"z":-7},
@@ -152,13 +162,18 @@ curl -X POST http://127.0.0.1:5079/path \
   }'
 ```
 
-`levelId` можно не указывать — тогда ответит активная карта.
+`levelId` можно не указывать — тогда ответит активная карта. `clientArtifactHash` нельзя
+пропускать: missing/different value отклоняется до DotRecast query.
 
 Для каждого запроса сервер пишет в console:
 
 - входные start/destination и клиентские hashes;
 - success, elapsed time, artifact/path hashes и mismatch flag;
 - каждую выходную координату маршрута;
-- `[WARNING]`, если artifact или local/server path расходятся.
+- fail-closed diagnostic до route work при artifact/identity mismatch;
+- `[WARNING]`, если уже вычисленный local/server path fingerprint расходится.
 
-Ответ всегда содержит авторитетные точки, server artifact hash, server path fingerprint и `serverMismatchDetected`. Серверный проект ссылается только на `DotRecast.Core` и `DotRecast.Detour`; Recast bake выполняется заранее в Unity Editor.
+Ответ всегда содержит авторитетные `JVector` coordinates, server artifact hash, server path
+fingerprint и `serverMismatchDetected`. Серверный проект прямо ссылается на отдельно
+установленный canonical `Jitter2.Core`, а также на `DotRecast.Core` и `DotRecast.Detour`; Recast
+bake выполняется заранее в Unity Editor.

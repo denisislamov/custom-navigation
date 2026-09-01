@@ -4,8 +4,8 @@
 
 Для нового проекта рекомендуемый порядок такой:
 
-1. Установить exact tag по [Installation](installation.md).
-2. Дождаться завершения compile без ошибок.
+1. Отдельно установить exact canonical Jitter release по [Installation](installation.md).
+2. Установить exact Custom Navigation tag и дождаться compile без ошибок.
 3. Создать project defaults через
    `Edit > Project Settings > DataSakura > Custom Navigation > Create Defaults`.
 4. Пройти [Quick Start](quick-start.md) в сохранённой сцене.
@@ -46,8 +46,11 @@ Gameplay assembly для локальных запросов:
   "name": "Game.Navigation",
   "references": [
     "CustomNavigation.Authoring",
-    "CustomNavigation.Runtime"
-  ]
+    "CustomNavigation.Runtime",
+    "CustomNavigation.UnityAdapter"
+  ],
+  "overrideReferences": true,
+  "precompiledReferences": ["Jitter2.Core.dll"]
 }
 ```
 
@@ -69,7 +72,9 @@ Editor-only adapter:
 Namespace не заменяет assembly reference. `CustomNavigation.Editor.Api` находится в
 `CustomNavigation.NavigationEditor` и не должен попадать в Player assembly.
 
-Не добавляйте прямую ссылку на `DotRecast.Recast.dll` в gameplay: Recast включён только
+Direct Jitter reference обязателен для assembly, которая называет `JVector`; он указывает на
+единственную отдельно установленную approved DLL. Не добавляйте прямую ссылку на
+`DotRecast.Recast.dll` в gameplay: Recast включён только
 для Editor bake. Runtime assembly уже содержит явные references на Core и Detour.
 
 ## Порядок инициализации
@@ -196,9 +201,11 @@ Base URL по умолчанию берётся из
 Runtime override хранится в `PlayerPrefs` и автоматически сбрасывается, если изменился
 asset baseline.
 
-Для multiplayer передавайте `levelId`, если сервер хранит несколько карт. Artifact hash
-и path fingerprint — диагностические checks; они не заменяют authoritative validation
-позиции игрока.
+Для multiplayer передавайте `levelId`, если сервер хранит несколько карт.
+`clientArtifactHash` обязателен: missing/different hash отклоняется до DotRecast query. Precision,
+Jitter SHA-256, StableMath id и fingerprint version также валидируются strict wire codec до
+route work. Path-result fingerprint остаётся сравнением результата и не заменяет authoritative
+validation позиции игрока.
 
 Reference server поддерживает HTTP. Для production network deployment самостоятельно
 обеспечьте TLS/reverse proxy, authentication, observability, rate limits и lifecycle.

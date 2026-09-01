@@ -6,7 +6,8 @@ Unity Physics и встроенный NavMesh не нужны.
 
 ## Перед началом
 
-- установлен DataSakura Custom Navigation 0.6.16;
+- отдельно установлен approved canonical Jitter f32 release;
+- установлен DataSakura Custom Navigation 0.7.0;
 - проект открыт в Unity 6000.3 или новее;
 - Console не содержит compile errors;
 - сцена сохранена: имена автоматически создаваемых assets зависят от имени сцены.
@@ -111,6 +112,8 @@ Assets/DataSakura/CustomNavigation/Generated/Navigation/
 ```csharp
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class NavigationQuickStartRequester : MonoBehaviour
@@ -122,8 +125,8 @@ public sealed class NavigationQuickStartRequester : MonoBehaviour
     private void Start()
     {
         request = navigation.RequestPath(
-            new Vector3(-4f, 0f, -4f),
-            new Vector3(4f, 0f, 4f),
+            NavigationUnityAdapter.ToJitter(new Vector3(-4f, 0f, -4f)),
+            NavigationUnityAdapter.ToJitter(new Vector3(4f, 0f, 4f)),
             NavigationQueryPriority.PlayerImmediate,
             OnPathCompleted);
     }
@@ -142,6 +145,8 @@ public sealed class NavigationQuickStartRequester : MonoBehaviour
         }
 
         Debug.Log($"Quick Start path: {result.Points.Length} points.");
+        JVector first = result.Points[0];
+        Vector3 firstUnityPoint = NavigationUnityAdapter.ToUnity(first);
     }
 }
 ```
@@ -149,9 +154,10 @@ public sealed class NavigationQuickStartRequester : MonoBehaviour
 Добавьте компонент `NavigationQuickStartRequester` на `Navigation Runtime` и перетащите
 тот же объект в поле `Navigation`.
 
-Этот пример компилируется против `CustomNavigation.Authoring` и
-`CustomNavigation.Runtime`. Если ваш gameplay-код находится в собственной `.asmdef`,
-добавьте обе assembly references; подробности — в [Integration](integration.md).
+Этот пример компилируется против `CustomNavigation.Authoring`, `CustomNavigation.Runtime`,
+`CustomNavigation.UnityAdapter` и отдельно установленного `Jitter2.Core.dll`. Если gameplay-код
+находится в собственной `.asmdef`, добавьте три assembly references и direct
+`precompiledReferences` на Jitter; подробности — в [Integration](integration.md).
 
 ## 6. Запустите и проверьте результат
 
@@ -184,7 +190,7 @@ Quick Start path: <N> points.
 4. На вкладке `Samples` импортируйте `Navigation Demos & Bots`.
 
 Unity копирует sample в
-`Assets/Samples/DataSakura Custom Navigation/0.6.16/Navigation Demos & Bots`.
+`Assets/Samples/DataSakura Custom Navigation/0.7.0/Navigation Demos & Bots`.
 Его Editor builders создают demo scenes и могут менять Build Settings. Импорт не следует
 считать read-only операцией; перед ним сохраните сцены и commit/stash изменения проекта.
 

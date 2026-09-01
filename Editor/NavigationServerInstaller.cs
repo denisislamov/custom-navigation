@@ -312,12 +312,23 @@ namespace CustomNavigation.Editor
             // before the first export is fine - the server reports that over /health.
             string dataFolder = NavigationArtifactBuilder.ResolveServerFolder();
             Directory.CreateDirectory(dataFolder);
+            string canonicalJitterRoot;
+            try
+            {
+                canonicalJitterRoot = CanonicalJitterEditorPreflight.ResolveApprovedRoot();
+            }
+            catch (Exception exception)
+            {
+                error = "Canonical Jitter prerequisite is not ready: " + exception.Message;
+                return false;
+            }
 
             var startInfo = new ProcessStartInfo("dotnet")
             {
                 Arguments =
                     $"run --project \"{NavigationServerInstaller.ProjectFilePath}\" " +
-                    $"--configuration Release -- --listen \"{listen}\" --data \"{dataFolder}\"",
+                    $"--configuration Release -p:CanonicalJitterRoot=\"{canonicalJitterRoot}\" " +
+                    $"-- --listen \"{listen}\" --data \"{dataFolder}\"",
                 WorkingDirectory = NavigationServerInstaller.InstallPath,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -503,7 +514,6 @@ namespace CustomNavigation.Editor
     // server, so its state (installed, running, artifact folder) is always visible
     // right next to the buttons.
 }
-
 
 
 

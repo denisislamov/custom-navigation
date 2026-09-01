@@ -4,6 +4,33 @@ All notable changes to this package are documented here. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the package adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-09-01
+
+### Breaking
+- Runtime, server and sample navigation coordinates now use canonical
+  `Jitter2.LinearMath.JVector`; Unity `Vector3` conversion is isolated in
+  `CustomNavigation.UnityAdapter.NavigationUnityAdapter`.
+- Wire protocol v2 is strict and fail-closed. Legacy reflection/JsonUtility coordinate DTOs are
+  not accepted.
+- Artifact schema is now `2` and binds precision, canonical Jitter assembly SHA-256, StableMath
+  compatibility and fingerprint algorithm v2. Schema-1 artifacts must be re-baked and re-exported.
+
+### Added
+- Exact separately installed canonical Jitter prerequisite validation for Unity and .NET server.
+- Shared deterministic path fingerprint, strict wire codec, DotRecast boundary adapter and
+  cross-runtime conformance corpora.
+
+### Compatibility
+- `NavigationEditorApi`, `NavigationPreviewApi`, editor tab entrypoints, serialized sample fields
+  and enum ordinals remain available.
+- Canonical Jitter is intentionally not an automatic UPM dependency and is not bundled in this
+  package. Install approved tag `jitter-v2.8.9-datasakura.1-rc.1` first.
+
+### Validation boundary
+- Source project Unity EditMode and .NET server/conformance gates pass in the migration branch.
+  Fresh consumer import, PlayMode, IL2CPP/AOT, device networking and package publication remain
+  separate release-candidate gates.
+
 ## [0.6.16] - 2026-08-31
 
 ### Added

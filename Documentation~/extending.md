@@ -1,6 +1,6 @@
 # Extending Custom Navigation
 
-Версия документа: **Custom Navigation 0.6.16**.
+Версия документа: **Custom Navigation 0.7.0**.
 
 Runtime расширяется через композицию. Package не предоставляет runtime interfaces, service
 registry или наследуемую base class: основные типы `sealed`, а helpers `static`. Создавайте
@@ -27,6 +27,7 @@ Package намеренно не навязывает DI framework. Игрово�
 using System;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public interface IGameNavigation
@@ -34,12 +35,12 @@ public interface IGameNavigation
     bool IsReady { get; }
 
     NavigationPathHandle RequestPath(
-        Vector3 start,
-        Vector3 destination,
+        JVector start,
+        JVector destination,
         NavigationQueryPriority priority,
         Action<NavigationPathResult> completion);
 
-    bool TryProject(Vector3 position, out Vector3 projected);
+    bool TryProject(JVector position, out JVector projected);
 }
 
 public sealed class CustomNavigationAdapter : IGameNavigation
@@ -56,15 +57,15 @@ public sealed class CustomNavigationAdapter : IGameNavigation
     public bool IsReady => behaviour.IsReady;
 
     public NavigationPathHandle RequestPath(
-        Vector3 start,
-        Vector3 destination,
+        JVector start,
+        JVector destination,
         NavigationQueryPriority priority,
         Action<NavigationPathResult> completion)
     {
         return behaviour.RequestPath(start, destination, priority, completion);
     }
 
-    public bool TryProject(Vector3 position, out Vector3 projected)
+    public bool TryProject(JVector position, out JVector projected)
     {
         return behaviour.TryProjectPosition(position, out projected);
     }
@@ -215,14 +216,15 @@ Package выполняет один request. Retry policy принадлежит
 ```csharp
 using System.Collections;
 using CustomNavigation.Runtime;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class NavigationServerRetry : MonoBehaviour
 {
     public IEnumerator RequestWithRetry(
         string levelId,
-        Vector3 start,
-        Vector3 destination,
+        JVector start,
+        JVector destination,
         string artifactHash,
         string localFingerprint,
         System.Action<NavigationServerPathResult> completion)
@@ -273,6 +275,7 @@ public sealed class NavigationServerRetry : MonoBehaviour
 ```csharp
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class VersionedPathConsumer : MonoBehaviour
@@ -281,8 +284,8 @@ public sealed class VersionedPathConsumer : MonoBehaviour
 
     public void RequestVersioned(
         NavigationQuerySchedulerBehaviour navigation,
-        Vector3 start,
-        Vector3 destination)
+        JVector start,
+        JVector destination)
     {
         int version = ++requestVersion;
         navigation.RequestPath(

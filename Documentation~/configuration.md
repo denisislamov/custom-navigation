@@ -1,6 +1,6 @@
 # Configuration
 
-Справочник фактических настроек DataSakura Custom Navigation 0.6.16. Значения ниже
+Справочник фактических настроек DataSakura Custom Navigation 0.7.0. Значения ниже
 относятся к новым assets/components. Старые сериализованные assets сохраняют свои
 значения после обновления пакета.
 

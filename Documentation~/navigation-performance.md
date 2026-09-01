@@ -1,6 +1,6 @@
 # Navigation Performance: фактическая семантика полей
 
-Контракт перепроверен для документации 0.6.16. Подробные defaults и presets также
+Контракт перепроверен для документации 0.7.0. Подробные defaults и presets также
 приведены в [Configuration](configuration.md#performance-profile).
 
 `NavigationPerformanceProfile` configures the local, owner-thread

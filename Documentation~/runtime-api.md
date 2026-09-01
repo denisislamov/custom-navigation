@@ -1,6 +1,6 @@
 # Runtime API
 
-Версия документа: **Custom Navigation 0.6.16**.
+Версия документа: **Custom Navigation 0.7.0**.
 
 Runtime загружает заранее запечённый Detour navmesh, выполняет локальные sliced-запросы
 в рамках покадрового бюджета и, при необходимости, отправляет путь на reference HTTP server.
@@ -12,12 +12,14 @@ Runtime **не** выполняет Recast bake, не использует Unity
 | --- | --- | --- |
 | `CustomNavigation.Authoring` | `CustomNavigation.Authoring` | `NavigationArtifactAsset`, `NavigationAgentProfile`, `NavigationPerformanceProfile`, настройки сервера и enums. |
 | `CustomNavigation.Runtime` | `CustomNavigation.Runtime` | Artifact loader, local scheduler, MonoBehaviour adapter, HTTP client и path fingerprint. |
+| `CustomNavigation.UnityAdapter` | `CustomNavigation.UnityAdapter` | Единственная package-owned граница `UnityEngine.Vector3` ↔ `JVector`. |
 
 Определения assemblies: `Authoring/CustomNavigation.Authoring.asmdef` и
 `Runtime/CustomNavigation.Runtime.asmdef` относительно корня package.
 
-В asmdef gameplay-сборки добавьте ссылки на обе assembly. Для обычного API прямые ссылки
-на DotRecast DLL не нужны. Они требуются только если consumer использует публичные
+В asmdef gameplay-сборки добавьте ссылки на Authoring, Runtime, UnityAdapter и прямую
+precompiled reference на отдельно установленный `Jitter2.Core.dll`. Для обычного API прямые
+ссылки на DotRecast DLL не нужны. Они требуются только если consumer использует публичные
 `NavigationArtifactInstance.NavMesh` или `CreateQuery()`.
 
 ## Рекомендуемый локальный сценарий
@@ -32,6 +34,8 @@ Runtime **не** выполняет Recast bake, не использует Unity
 ```csharp
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class PlayerPathRequester : MonoBehaviour
@@ -58,8 +62,8 @@ public sealed class PlayerPathRequester : MonoBehaviour
         int version = ++requestVersion;
         requestPending = true;
         NavigationPathHandle handle = navigation.RequestPath(
-            transform.position,
-            destination,
+            NavigationUnityAdapter.ToJitter(transform.position),
+            NavigationUnityAdapter.ToJitter(destination),
             NavigationQueryPriority.PlayerImmediate,
             result => OnPathCompleted(version, result));
 
@@ -98,9 +102,10 @@ public sealed class PlayerPathRequester : MonoBehaviour
         }
     }
 
-    private void ApplyPath(Vector3[] points, bool isPartial)
+    private void ApplyPath(JVector[] points, bool isPartial)
     {
-        // Передайте точки в movement-код игры. Сохраняйте координату Y.
+        // Авторитетное состояние остаётся JVector. Конвертируйте только при записи Transform.
+        Vector3 firstPresentationPoint = NavigationUnityAdapter.ToUnity(points[0]);
     }
 }
 ```
@@ -215,14 +220,15 @@ admission увидит новый лимит, а workspace pool останетс
 
 `RouteCacheEntries`, `MemoryBudgetMegabytes`, `BackgroundWorkerCount` и
 `CollectProductionMetrics` сохранены для сериализационной совместимости, но route cache,
-memory enforcement, workers и production telemetry в runtime 0.6.16 отсутствуют.
+memory enforcement, workers и production telemetry в runtime 0.7.0 отсутствуют.
 
 ## Artifact validation и agent identity
 
 Рекомендуемый вход — `NavigationArtifactLoader.Load(NavigationArtifactAsset)`. Он проверяет:
 
-- наличие binary `TextAsset`;
-- exact schema `1`;
+- exact schema `2` и запрет legacy schema 1 с требованием re-bake/re-export;
+- precision `f32`, canonical Jitter DLL SHA-256, StableMath compatibility id и fingerprint v2;
+- наличие binary `TextAsset` после compatibility validation;
 - exact DotRecast version `2026.1.3`;
 - SHA-256 binary;
 - наличие полигонов;
@@ -269,14 +275,15 @@ public static class NavigationRuntimeFactory
 
 ```csharp
 using CustomNavigation.Runtime;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 public sealed class ServerPathRequester : MonoBehaviour
 {
     public void Request(
         string levelId,
-        Vector3 start,
-        Vector3 destination,
+        JVector start,
+        JVector destination,
         string clientArtifactHash,
         string localPathFingerprint)
     {
@@ -303,9 +310,9 @@ public sealed class ServerPathRequester : MonoBehaviour
         ApplyServerPath(result.Points, authoritativeCorrectionRequired);
     }
 
-    private void ApplyServerPath(Vector3[] points, bool correctionRequired)
+    private void ApplyServerPath(JVector[] points, bool correctionRequired)
     {
-        // Consumer-owned movement/correction.
+        // Consumer-owned movement/correction; Transform boundary uses NavigationUnityAdapter.
     }
 }
 ```

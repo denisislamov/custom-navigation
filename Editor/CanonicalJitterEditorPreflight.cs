@@ -10,6 +10,11 @@ namespace CustomNavigation.Editor
     {
         public static void EnsureReady()
         {
+            ResolveApprovedRoot();
+        }
+
+        public static string ResolveApprovedRoot()
+        {
             string[] assetPaths = AssetDatabase.GetAllAssetPaths();
             var candidates = new List<string>();
             for (int index = 0; index < assetPaths.Length; index++)
@@ -33,6 +38,17 @@ namespace CustomNavigation.Editor
             }
 
             CanonicalJitterContract.ValidateInstalledFiles(candidates);
+            string root = Path.GetDirectoryName(candidates[0])
+                          ?? throw new InvalidOperationException("Cannot resolve canonical Jitter root.");
+            string unsafePath = Path.Combine(root, "System.Runtime.CompilerServices.Unsafe.dll");
+            if (!File.Exists(unsafePath))
+            {
+                throw new FileNotFoundException(
+                    "Canonical Jitter root is missing System.Runtime.CompilerServices.Unsafe.dll.",
+                    unsafePath);
+            }
+
+            return root;
         }
     }
 }
