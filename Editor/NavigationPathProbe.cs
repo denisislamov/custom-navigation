@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using CustomNavigation.Authoring;
 using CustomNavigation.Runtime;
+using CustomNavigation.UnityAdapter;
 using DotRecast.Core.Numerics;
 using DotRecast.Detour;
+using Jitter2.LinearMath;
 using UnityEngine;
 
 namespace CustomNavigation.Editor
@@ -148,8 +150,9 @@ namespace CustomNavigation.Editor
                 Mathf.Max(2f, agent.Height * 2f),
                 Mathf.Max(1f, agent.Radius * 4f));
 
+            JVector canonicalStart = NavigationUnityAdapter.ToJitter(start);
             DtStatus startStatus = query.FindNearestPoly(
-                ToRc(start),
+                NavigationDotRecastAdapter.ToDotRecast(in canonicalStart),
                 extents,
                 filter,
                 out long startRef,
@@ -164,10 +167,12 @@ namespace CustomNavigation.Editor
             }
 
             result.HasProjectedStart = true;
-            result.ProjectedStart = ToUnity(nearestStart);
+            result.ProjectedStart = NavigationUnityAdapter.ToUnity(
+                NavigationDotRecastAdapter.FromDotRecast(in nearestStart));
 
+            JVector canonicalDestination = NavigationUnityAdapter.ToJitter(destination);
             DtStatus endStatus = query.FindNearestPoly(
-                ToRc(destination),
+                NavigationDotRecastAdapter.ToDotRecast(in canonicalDestination),
                 extents,
                 filter,
                 out long endRef,
@@ -182,7 +187,8 @@ namespace CustomNavigation.Editor
             }
 
             result.HasProjectedDestination = true;
-            result.ProjectedDestination = ToUnity(nearestEnd);
+            result.ProjectedDestination = NavigationUnityAdapter.ToUnity(
+                NavigationDotRecastAdapter.FromDotRecast(in nearestEnd));
 
             var corridor = new long[MaximumCorridorPolygons];
             DtStatus pathStatus = query.FindPath(
@@ -226,7 +232,9 @@ namespace CustomNavigation.Editor
             float length = 0f;
             for (int i = 0; i < pointCount; i++)
             {
-                points[i] = ToUnity(straightPath[i].pos);
+                RcVec3f dotRecastPoint = straightPath[i].pos;
+                points[i] = NavigationUnityAdapter.ToUnity(
+                    NavigationDotRecastAdapter.FromDotRecast(in dotRecastPoint));
                 if (i > 0)
                 {
                     length += Vector3.Distance(points[i - 1], points[i]);
@@ -288,15 +296,5 @@ namespace CustomNavigation.Editor
                 costs);
         }
 
-        internal static RcVec3f ToRc(Vector3 value)
-        {
-            return new RcVec3f(value.x, value.y, value.z);
-        }
-
-        internal static Vector3 ToUnity(RcVec3f value)
-        {
-            return new Vector3(value.X, value.Y, value.Z);
-        }
     }
 }
-

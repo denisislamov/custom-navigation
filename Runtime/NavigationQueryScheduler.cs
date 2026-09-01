@@ -172,7 +172,7 @@ namespace CustomNavigation.Runtime
             EnsureOwnerThread();
             NavigationJitterValidation.RequireFinite(position, nameof(position));
             DtStatus status = projectionQuery.FindNearestPoly(
-                ToRc(position),
+                NavigationDotRecastAdapter.ToDotRecast(in position),
                 nearestPolyExtents,
                 filter,
                 out long polygonReference,
@@ -184,7 +184,7 @@ namespace CustomNavigation.Runtime
                 return false;
             }
 
-            projectedPosition = FromRc(nearestPoint);
+            projectedPosition = NavigationDotRecastAdapter.FromDotRecast(in nearestPoint);
             return true;
         }
 
@@ -375,8 +375,10 @@ namespace CustomNavigation.Runtime
         {
             QueryWorkspace workspace = workspacePool.Pop();
             DtNavMeshQuery query = workspace.Query;
-            RcVec3f requestedStart = ToRc(request.Start);
-            RcVec3f requestedEnd = ToRc(request.Destination);
+            JVector canonicalStart = request.Start;
+            JVector canonicalEnd = request.Destination;
+            RcVec3f requestedStart = NavigationDotRecastAdapter.ToDotRecast(in canonicalStart);
+            RcVec3f requestedEnd = NavigationDotRecastAdapter.ToDotRecast(in canonicalEnd);
             DtStatus startStatus = query.FindNearestPoly(
                 requestedStart,
                 nearestPolyExtents,
@@ -447,8 +449,8 @@ namespace CustomNavigation.Runtime
 
             DtStraightPath[] straightPath = query.Workspace.StraightPath;
             DtStatus straightStatus = query.Query.FindStraightPath(
-                ToRc(query.NearestStart),
-                ToRc(query.NearestEnd),
+                NavigationDotRecastAdapter.ToDotRecast(in query.NearestStart),
+                NavigationDotRecastAdapter.ToDotRecast(in query.NearestEnd),
                 polygonPath.AsSpan(),
                 polygonCount,
                 straightPath.AsSpan(),
@@ -471,7 +473,7 @@ namespace CustomNavigation.Runtime
             for (int i = 0; i < pointCount; i++)
             {
                 RcVec3f point = straightPath[i].pos;
-                points[i] = FromRc(point);
+                points[i] = NavigationDotRecastAdapter.FromDotRecast(in point);
             }
 
             bool partial = pathStatus.IsPartial();
@@ -615,16 +617,6 @@ namespace CustomNavigation.Runtime
                 costs);
         }
 
-        private static RcVec3f ToRc(JVector value)
-        {
-            return new RcVec3f(value.X, value.Y, value.Z);
-        }
-
-        private static JVector FromRc(RcVec3f value)
-        {
-            return new JVector(value.X, value.Y, value.Z);
-        }
-
         private void EnsureOwnerThread()
         {
             if (Thread.CurrentThread.ManagedThreadId != ownerThreadId)
@@ -696,8 +688,8 @@ namespace CustomNavigation.Runtime
             {
                 Request = request;
                 Workspace = workspace;
-                NearestStart = FromRc(nearestStart);
-                NearestEnd = FromRc(nearestEnd);
+                NearestStart = NavigationDotRecastAdapter.FromDotRecast(in nearestStart);
+                NearestEnd = NavigationDotRecastAdapter.FromDotRecast(in nearestEnd);
             }
         }
 

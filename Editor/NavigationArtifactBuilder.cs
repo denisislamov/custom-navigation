@@ -14,6 +14,7 @@ using DotRecast.Detour;
 using DotRecast.Detour.Io;
 using DotRecast.Recast;
 using DotRecast.Recast.Geom;
+using Jitter2.LinearMath;
 using UnityEditor;
 using UnityEngine;
 
@@ -162,15 +163,17 @@ namespace CustomNavigation.Editor
                 var query = new DtNavMeshQuery(loaded);
                 var filter = new DtQueryDefaultFilter();
                 var extents = new RcVec3f(2f, 4f, 2f);
+                var canonicalStart = new JVector(-3f, 0f, -3f);
                 DtStatus startStatus = query.FindNearestPoly(
-                    new RcVec3f(-3f, 0f, -3f),
+                    NavigationDotRecastAdapter.ToDotRecast(in canonicalStart),
                     extents,
                     filter,
                     out long startRef,
                     out RcVec3f nearestStart,
                     out _);
+                var canonicalEnd = new JVector(3f, 0f, 3f);
                 DtStatus endStatus = query.FindNearestPoly(
-                    new RcVec3f(3f, 0f, 3f),
+                    NavigationDotRecastAdapter.ToDotRecast(in canonicalEnd),
                     extents,
                     filter,
                     out long endRef,
@@ -922,9 +925,13 @@ namespace CustomNavigation.Editor
             for (int i = 0; i < links.Length; i++)
             {
                 NavigationLink link = links[i];
+                Vector3 canonicalStart = CanonicalUnityVector(link.WorldStart);
+                Vector3 canonicalEnd = CanonicalUnityVector(link.WorldEnd);
+                JVector jitterStart = NavigationUnityAdapter.ToJitter(canonicalStart);
+                JVector jitterEnd = NavigationUnityAdapter.ToJitter(canonicalEnd);
                 geometry.AddOffMeshConnection(
-                    ToRc(link.WorldStart),
-                    ToRc(link.WorldEnd),
+                    NavigationDotRecastAdapter.ToDotRecast(in jitterStart),
+                    NavigationDotRecastAdapter.ToDotRecast(in jitterEnd),
                     link.Radius,
                     link.Bidirectional,
                     link.AreaId,
@@ -1282,9 +1289,9 @@ namespace CustomNavigation.Editor
             return Mathf.Round(value * 10000f) * 0.0001f;
         }
 
-        private static RcVec3f ToRc(Vector3 value)
+        private static Vector3 CanonicalUnityVector(Vector3 value)
         {
-            return new RcVec3f(
+            return new Vector3(
                 CanonicalFloat(value.x),
                 CanonicalFloat(value.y),
                 CanonicalFloat(value.z));

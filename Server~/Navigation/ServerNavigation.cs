@@ -52,8 +52,8 @@ public sealed class ServerNavigation
         lock (_queryLock)
         {
             var searchExtents = new RcVec3f(2f, 4f, 2f);
-            var startPoint = ToRc(start);
-            var endPoint = ToRc(destination);
+            var startPoint = NavigationDotRecastAdapter.ToDotRecast(in start);
+            var endPoint = NavigationDotRecastAdapter.ToDotRecast(in destination);
 
             DtStatus startStatus = _query.FindNearestPoly(
                 startPoint,
@@ -109,7 +109,7 @@ public sealed class ServerNavigation
             for (int i = 0; i < pointCount; i++)
             {
                 RcVec3f point = straightPath[i].pos;
-                points[i] = new JVector(point.X, point.Y, point.Z);
+                points[i] = NavigationDotRecastAdapter.FromDotRecast(in point);
             }
 
             string fingerprint = NavigationPathFingerprint.Compute(points);
@@ -172,11 +172,6 @@ public sealed class ServerNavigation
     private static bool IsFinite(JVector value)
     {
         return float.IsFinite(value.X) && float.IsFinite(value.Y) && float.IsFinite(value.Z);
-    }
-
-    private static RcVec3f ToRc(JVector value)
-    {
-        return new RcVec3f(value.X, value.Y, value.Z);
     }
 
     private static string FormatPoint(JVector point)
