@@ -6,11 +6,13 @@
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <NuGetAudit>false</NuGetAudit>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <Jitter2CorePath>$(CanonicalJitterRoot)/Jitter2.Core.dll</Jitter2CorePath>
     <UnsafePath>$(CanonicalJitterRoot)/System.Runtime.CompilerServices.Unsafe.dll</UnsafePath>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Program.cs" />
     <Compile Include="../../Runtime/CanonicalJitterContract.cs" Link="Shared/CanonicalJitterContract.cs" />
     <Reference Include="Jitter2.Core" Condition="'$(CanonicalJitterRoot)' != ''">
       <HintPath>$(Jitter2CorePath)</HintPath>
